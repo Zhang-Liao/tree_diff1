@@ -1,11 +1,12 @@
-
 open Sexplib
 open Tree_diff_lib.Tree23lib
 
 let context = ref 1
+let file = ref "data/tree23.dat"
 let args =
     [
         ("-context", Arg.Set_int context, "Set to 1 to contain the context, 2 to remove context. Default to contain the context.");
+        ("-file", Arg.Set_string file, "The file of input data.")
     ]
 let usage = "Tree23."
 let () = Arg.parse
@@ -213,5 +214,5 @@ let _ =
       List.iter (fun c -> 
         let cs = patch23_sexpr c in
        print_endline@@Sexp.to_string_hum@@cs) changes in 
-  let sexps = load_tree23s "data/tree23.dat" in
+  let sexps = load_tree23s !file in
   List.iter (fun x -> aux x; print_newline ()) sexps

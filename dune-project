@@ -19,7 +19,7 @@
  (name tree_diff)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune)
+ (depends ocaml dune batteries sexplib)
  (tags
   (topics "to describe" your project)))
 
