@@ -1,0 +1,4 @@
+(executable
+ (public_name tree_diff)
+ (name tree23_main)
+ (libraries tree_diff_lib batteries))
