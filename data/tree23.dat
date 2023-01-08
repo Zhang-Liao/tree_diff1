@@ -1,0 +1,4 @@
+((S (Node3 t (Node2 u v) (Node2 w x))) (D (Node3 t (Node2 v u) (Node2 w' x))))
+((S (Node2 t v)) (D (Node3 t (Node2 v u) (Node2 w' x))))
+((S (Node3 t (Node3 t (Node2 u v) (Node2 v u)) (Node2 w x))) (D (Node3 t (Node2 v u) (Node2 w' x))))
+((S (Node3 t (Node3 u (Node2 u v) (Node2 v u)) (Node2 w x))) (D (Node3 t (Node2 v u) (Node2 w' x))))
