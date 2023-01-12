@@ -16,33 +16,33 @@ module StrMap = Map.Make(String)
 
 let rec extract o t = 
   match o t with
-  | Some i -> Hole (i, ()) 
+  | Some i -> Hole i
   | None -> (
-      match t with
-      | LeafH (a, _) -> LeafC a
-      | Node2H ((a, b), _) -> Node2C (extract o a, extract o b, ())   
-      | Node3H ((a, b, c), _) -> Node3C (extract o a, extract o b, extract o c, ()))
+      match t.data with
+      | LeafF a -> Tree (LeafF a)
+      | Node2F (a, b) -> Tree(Node2F (extract o a, extract o b))   
+      | Node3F (a, b, c) -> Tree(Node3F (extract o a, extract o b, extract o c)))
 
 let postproc t1 t2 tc1 tc2 = 
   let vars_of t = 
     let rec aux acc = function
-      | Hole (i, _) -> MetaVarSet.add i acc
-      | LeafC _ -> acc
-      | Node2C (a, b, _) -> aux (aux acc a) b
-      | Node3C (a, b, c, _) -> aux (aux (aux acc a) b) c
+      | Hole i -> MetaVarSet.add i acc
+      | Tree(LeafF _) -> acc
+      | Tree(Node2F (a, b)) -> aux (aux acc a) b
+      | Tree(Node3F (a, b, c)) -> aux (aux (aux acc a) b) c
     in
     aux MetaVarSet.empty t in
   let keep_or_drop tc t vars =
     let rec aux tc t = 
       match (tc, t) with
-      | Hole (h, _), _ -> (
+      | Hole h, _ -> (
           match StrMap.find_opt h vars with
           | None -> tree_to_treec t
           (* ???? *)
-          | Some reorder_h -> Hole (Stdlib.string_of_int reorder_h, ()))
-      | LeafC _, _ -> tc
-      | Node2C (a, b, _), Node2(a', b')-> Node2C (aux a a', aux b b', ())
-      | Node3C (a, b, c, _), Node3(a', b', c') -> Node3C (aux a a', aux b b', aux c c', ())
+          | Some reorder_h -> Hole (Stdlib.string_of_int reorder_h))
+      | Tree(LeafF _), _ -> tc
+      | Tree(Node2F (a, b)), Node2(a', b')-> Tree(Node2F (aux a a', aux b b'))
+      | Tree(Node3F (a, b, c)), Node3(a', b', c') -> Tree(Node3F (aux a a', aux b b', aux c c'))
       | _ -> failwith "tree23c's node is inconsistent with tree23's node" 
     in aux tc t 
   in
@@ -56,42 +56,37 @@ let postproc t1 t2 tc1 tc2 =
 
 let rec gcp tc1 tc2 = 
   match tc1, tc2 with
-  | LeafC t, LeafC t' when t = t' -> LeafC t
-  | Node2C (a, b, _), Node2C(a', b', _) -> Node2C (gcp a a', gcp b b', ())
-  | Node3C (a, b, c, _), Node3C(a', b', c', _) -> Node3C (gcp a a', gcp b b', gcp c c', ())
-  | _ -> Hole((tc1, tc2), ())
-
-let get_hash = function
-  | LeafH (_, h) 
-  | Node2H (_ ,h)
-  | Node3H (_, h) -> h
+  | Tree(LeafF t), Tree(LeafF t') when t = t' -> Tree (LeafF t)
+  | Tree(Node2F (a, b)), Tree(Node2F(a', b')) -> Tree(Node2F (gcp a a', gcp b b'))
+  | Tree(Node3F (a, b, c)), Tree(Node3F(a', b', c')) -> Tree(Node3F (gcp a a', gcp b b', gcp c c'))
+  | _ -> Hole(tc1, tc2)
 
 let rec decorate t = 
   let dig = Digest.string@@Sexp.to_string_mach@@sexp_of_tree23 t in
   match t with 
-  | Leaf a -> LeafH (a, dig)
+  | Leaf a -> {data = LeafF a; dig = dig}
   | Node2 (a, b)-> 
     let a_h = decorate a in
     let b_h = decorate b in
-    Node2H ((a_h, b_h), dig)
+    {data = Node2F (a_h, b_h); dig = dig}
   | Node3 (a, b, c) -> 
     let a_h = decorate a in
     let b_h = decorate b in
     let c_h = decorate c in
-    Node3H ((a_h, b_h,c_h), dig)
+    {data = Node3F (a_h, b_h,c_h); dig =dig}
 
 let subtrees t = 
-  let rec aux acc = function
-    | LeafH (_, h) -> MetaVarSet.add h acc
-    | Node2H ((a, b), h) -> 
-      let acc1 = aux acc a in
-      let acc2 = aux acc1 b in
-      MetaVarSet.add h acc2
-    | Node3H ((a, b, c), h) -> 
-      let acc1 = aux acc a in
-      let acc2 = aux acc1 b in
-      let acc3 = aux acc2 c in
-      MetaVarSet.add h acc3 in
+  let rec aux acc t =
+    let acc1 = MetaVarSet.add t.dig acc in 
+    match t.data with
+    | LeafF _ -> acc1
+    | Node2F (a, b) -> 
+      let acc2 = aux acc1 a in
+      aux acc2 b 
+    | Node3F (a, b, c) -> 
+      let acc2 = aux acc1 a in
+      let acc3 = aux acc2 b in
+      aux acc3 c in
   aux MetaVarSet.empty t
 
 let wcs s d = 
@@ -99,7 +94,7 @@ let wcs s d =
   let trees2 = subtrees d in
   let inters = MetaVarSet.inter trees1 trees2 in
   fun t -> 
-    let h = get_hash t in
+    let h =  t.dig in
     MetaVarSet.find_opt h inters 
 
 let change_tree23 s d = 
@@ -108,24 +103,20 @@ let change_tree23 s d =
   let oracle = wcs s_h d_h in
   postproc s d (extract oracle s_h) (extract oracle d_h)
 
-let tree23c_holes t =
+(* let tree23c_holes t =
   let rec aux s_hls t = 
     match t with
-    | LeafC _ -> s_hls 
-    | Hole (h, _) -> MetaVarSet.add h s_hls
-    | Node2C (a, b, _) -> 
+    | Hole h -> MetaVarSet.add h s_hls
+    | Tree(LeafF _) -> s_hls 
+    | Tree(Node2F (a, b)) -> 
       let s_hls1 = aux s_hls a in
       aux s_hls1 b
-    | Node3C (a, b, c, _) -> 
+    | Tree(Node3F (a, b, c)) -> 
       let s_hls1 = aux s_hls a in
       let s_hls2 = aux s_hls1 b in
       aux s_hls2 c
-  in aux MetaVarSet.empty t
-
-let patch23v_hls = function
-  | Hole (_, hls) | Node2C (_, _, hls) | Node3C (_,_, _, hls) -> hls
-  | LeafC _ -> MetaVarSet.empty, MetaVarSet.empty, true
-
+  in aux MetaVarSet.empty t *)
+(* 
 let rec patch_to_patchv (p:patch23) = 
   match p with
   | Hole ((s, d), _) -> 
@@ -183,17 +174,17 @@ let closure patc =
       if is_closed p && ((is_closed a && is_closed b && is_closed c) == false) 
       then Hole ((Node3C (get_source a, get_source b, get_source c, ()), Node3C (get_dest a, get_dest b, get_dest c, ())), ())
       else Node3C (aux a, aux b, aux c, ())
-  in aux@@patch_to_patchv patc
+  in aux@@patch_to_patchv patc *)
 
 let get_changes p = 
   let rec aux acc p =
   match p with
   | Hole (a, b) ->  Hole (a, b) :: acc
-  | LeafC _ -> acc
-  | Node2C (a, b) ->
+  | Tree(LeafF _) -> acc
+  | Tree(Node2F (a, b)) ->
     let acc1 = aux acc a in 
     aux acc1 b 
-  | Node3C (a, b, c) ->
+  | Tree(Node3F (a, b, c)) ->
     let acc1 = aux acc a in 
     let acc2 = aux acc1 b in 
     aux acc2 c 
@@ -204,17 +195,17 @@ let diff_tree23 (s, d) = (BatPervasives.uncurry gcp)@@change_tree23 s d
 let _ = 
   let aux ((t1, t2) as t) =
     let _ = 
-      Printf.printf "Tree1 %s\n" (Sexp.to_string_hum@@sexp_of_tree23 (fun _ -> Sexp.unit) t1);
-      Printf.printf "Tree2 %s\n" (Sexp.to_string_hum@@sexp_of_tree23 (fun _ -> Sexp.unit) t2);
+      Printf.printf "Tree1 %s\n" (Sexp.to_string_hum@@sexp_of_tree23 t1);
+      Printf.printf "Tree2 %s\n" (Sexp.to_string_hum@@sexp_of_tree23 t2);
       Stdlib.flush Stdlib.stdout
     in
-    let patch = closure@@diff_tree23 t in
+    let patch = (* closure@@ *) diff_tree23 t in
     if !context == 1 then 
-      print_endline@@Sexp.to_string_hum@@patch23_sexpr patch 
+      print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch 
     else  
       let changes = get_changes patch in
       List.iter (fun c -> 
-        let cs = patch23_sexpr c in
+        let cs = sexp_of_patch23 c in
        print_endline@@Sexp.to_string_hum@@cs) changes in 
   let sexps = load_tree23s !file in
   List.iter (fun x -> aux x; print_newline ()) sexps
