@@ -21,7 +21,7 @@ type 'a change23 = 'a tree23c * 'a tree23c [@@deriving sexp]
 type patch23 = (metavar change23) tree23c [@@deriving sexp]
 
 (* --------------------------------------------------------- *)
-(* Type conversion ??? *)
+(* Type conversion  *)
 let rec tree_to_treec t: metavar tree23c = 
   match t with 
   | Leaf l -> Tree (LeafF l)

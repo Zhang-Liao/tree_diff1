@@ -156,7 +156,7 @@ let _ =
     let _, _, patch =  closure patch in
     if !context == 1 then 
       let _ = print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch in 
-      IntMap.iter (fun i t -> Printf.printf "Hole %i\tTerm %s\n" i (Sexp.to_string_hum@@sexp_of_tree23 t)) map
+      IntMap.iter (fun i t -> Printf.printf "Hole %i\tTerm %s\n" i (Sexp.to_string_hum@@sexp_of_tree23 t)) map; Stdlib.flush Stdlib.stdout
     else  
       let changes = get_changes patch in
       List.iter (fun c -> 
