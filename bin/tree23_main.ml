@@ -13,7 +13,7 @@ let () = Arg.parse
     args (fun x -> raise (Arg.Bad ("Bad argument : " ^ x))) usage
 
 module StrMap = Map.Make(String)
-
+module IntMap = Map.Make(Int)
 let rec extract o t = 
   match o t with
   | Some i -> Hole i
@@ -26,18 +26,25 @@ let rec extract o t =
 let postproc t1 t2 tc1 tc2 = 
   let vars_of t = 
     List.fold_left (fun acc v -> MetaVarSet.add v acc)  MetaVarSet.empty (get_holes t) in
-  let keep_or_drop tc t vars =
-    let rec aux tc t = 
+  let keep_or_drop tc t vars map =
+    let rec aux tc t map = 
       match (tc, t) with
       | Hole h, _ -> (
           match StrMap.find_opt h vars with
-          | None -> tree_to_treec t
-          | Some reorder_h -> Hole (Stdlib.string_of_int reorder_h))
-      | Tree(LeafF _), _ -> tc
-      | Tree(Node2F (a, b)), Node2(a', b')-> Tree(Node2F (aux a a', aux b b'))
-      | Tree(Node3F (a, b, c)), Node3(a', b', c') -> Tree(Node3F (aux a a', aux b b', aux c c'))
+          | None -> tree_to_treec t, map
+          | Some reorder_h -> Hole (Stdlib.string_of_int reorder_h), IntMap.add reorder_h t map )
+      | Tree(LeafF _), _ -> tc, map
+      | Tree(Node2F (a0, b0)), Node2(a1, b1)->
+        let a2, map0 = aux a0 a1 map in
+        let b2, map1 = aux b0 b1 map0 in
+        Tree(Node2F (a2, b2)), map1
+      | Tree(Node3F (a0, b0, c0)), Node3(a1, b1, c1) -> 
+        let a2, map0 = aux a0 a1 map in
+        let b2, map1 = aux b0 b1 map0 in
+        let c2, map2 = aux c0 c1 map1 in
+        Tree(Node3F (a2, b2, c2)), map2
       | _ -> failwith "tree23c's node is inconsistent with tree23's node" 
-    in aux tc t 
+    in aux tc t map
   in
   let vars1 = vars_of tc1 in
   let vars2 = vars_of tc2 in
@@ -45,8 +52,10 @@ let postproc t1 t2 tc1 tc2 =
   let reorder_vars, _ = 
     MetaVarSet.fold (fun v (acc, i) -> 
         StrMap.add v i acc, i +1) vars (StrMap.empty, 0) in
-  keep_or_drop tc1 t1 reorder_vars, keep_or_drop tc2 t2 reorder_vars
-
+  let tc1', map0 = keep_or_drop tc1 t1 reorder_vars IntMap.empty in 
+  let tc2', map1 = keep_or_drop tc2 t2 reorder_vars map0 in
+  tc1', tc2', map1
+  
 let rec gcp tc1 tc2 = 
   match tc1, tc2 with
   | Tree(LeafF t), Tree(LeafF t') when t = t' -> Tree (LeafF t)
@@ -129,7 +138,9 @@ let closure pat =
       else s, d, Tree(Node3F (a', b', c'))
   in aux pat
 
-let diff_tree23 (s, d) = (BatPervasives.uncurry gcp)@@change_tree23 s d 
+let diff_tree23 (s, d) = 
+  let t0, t1, map = change_tree23 s d in
+  gcp t0 t1, map
 
 let _ = 
   let aux ((t1, t2) as t) =
@@ -138,9 +149,11 @@ let _ =
       Printf.printf "Tree2 %s\n" (Sexp.to_string_hum@@sexp_of_tree23 t2);
       Stdlib.flush Stdlib.stdout
     in
-    let _, _, patch =  closure@@diff_tree23 t in
+    let patch, map = diff_tree23 t in
+    let _, _, patch =  closure patch in
     if !context == 1 then 
-      print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch 
+      let _ = print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch in 
+      IntMap.iter (fun i t -> Printf.printf "Hole %i\tTerm %s\n" i (Sexp.to_string_hum@@sexp_of_tree23 t)) map
     else  
       let changes = get_changes patch in
       List.iter (fun c -> 
