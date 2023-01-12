@@ -78,7 +78,7 @@ let rec decorate t =
     let b_h, b_s = decorate b in
     let c_h, c_s = decorate c in
     let s = Printf.sprintf "(Node3 %s %s %s)" a_s b_s c_s in
-    {data = Node3F (a_h, b_h,c_h); dig =Digest.string s}, s
+    {data = Node3F (a_h, b_h, c_h); dig =Digest.string s}, s
 
 let subtrees t = 
   let rec aux acc t =
@@ -115,7 +115,7 @@ let tree23c_holes t =  MetaVarSet.of_list@@get_holes t
 
 let get_source t = map_holes (fun (s, _) -> s) t
 
-let get_dest t = map_holes (fun (d, _) -> d) t
+let get_dest t = map_holes (fun (_, d) -> d) t
 
 let closure pat = 
   let rec aux p = 
