@@ -47,3 +47,12 @@ let rec get_holes = function
 | Tree (LeafF _) -> []
 | Tree (Node2F (a, b)) -> List.rev_append (get_holes a) (get_holes b)
 | Tree (Node3F (a, b, c)) -> List.rev_append (get_holes a) (List.rev_append (get_holes b) (get_holes c))
+
+let map_holes f t = 
+  let rec aux t = 
+  match t with
+  | Hole h -> f h 
+  | Tree (LeafF l) -> Tree (LeafF l)
+  | Tree (Node2F (a, b)) -> Tree (Node2F (aux a, aux b))
+  | Tree (Node3F (a, b, c)) -> Tree (Node3F (aux a, aux b, aux c))
+  in aux t

@@ -32,7 +32,6 @@ let postproc t1 t2 tc1 tc2 =
       | Hole h, _ -> (
           match StrMap.find_opt h vars with
           | None -> tree_to_treec t
-          (* ???? *)
           | Some reorder_h -> Hole (Stdlib.string_of_int reorder_h))
       | Tree(LeafF _), _ -> tc
       | Tree(Node2F (a, b)), Node2(a', b')-> Tree(Node2F (aux a a', aux b b'))
@@ -100,20 +99,14 @@ let change_tree23 s d =
   let oracle = wcs s_h d_h in
   postproc s d (extract oracle s_h) (extract oracle d_h)
 
-(* let tree23c_holes t =
-  let rec aux s_hls t = 
-    match t with
-    | Hole h -> MetaVarSet.add h s_hls
-    | Tree(LeafF _) -> s_hls 
-    | Tree(Node2F (a, b)) -> 
-      let s_hls1 = aux s_hls a in
-      aux s_hls1 b
-    | Tree(Node3F (a, b, c)) -> 
-      let s_hls1 = aux s_hls a in
-      let s_hls2 = aux s_hls1 b in
-      aux s_hls2 c
-  in aux MetaVarSet.empty t *)
+let tree23c_holes t =  MetaVarSet.of_list@@get_holes t
+
+let get_source t = map_holes (fun (s, _) -> s) t
+
+let get_dest t = map_holes (fun (d, _) -> d) t
+
 (* 
+
 let rec patch_to_patchv (p:patch23) = 
   match p with
   | Hole ((s, d), _) -> 
@@ -144,19 +137,7 @@ let is_closed = function
   | Hole (_, (_,_, c)) | Node2C(_,_, (_,_, c)) | Node3C (_, _, _,(_,_, c)) -> c
   | LeafC _ -> true
 
-let rec get_source t = 
-  match t with
-  | Hole ((s, _), _) -> s
-  | Node2C (a, b, info) -> Node2C (get_source a, get_source b, info)
-  | Node3C (a, b, c, info) -> Node3C (get_source a, get_source b, get_source c, info)
-  | LeafC l -> LeafC l
 
-let rec get_dest t = 
-  match t with
-  | Hole ((_, d), _) -> d
-  | Node2C (a, b, info) -> Node2C (get_dest a, get_dest b, info)
-  | Node3C (a, b, c, info) -> Node3C (get_dest a, get_dest b, get_dest c, info)
-  | LeafC l -> LeafC l
 
 let closure patc = 
   let rec aux p = 
