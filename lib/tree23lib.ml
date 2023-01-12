@@ -39,3 +39,11 @@ let load_tree23s f =
         (* s1, d1 *)
       | _ -> failwith "The input in the dataset has a wrong format. Each line must contain two trees"
     ) sexps
+
+(* --------------------------------------------------------- *)
+(* Map and Fold *)
+let rec get_holes = function
+| Hole h -> [h]
+| Tree (LeafF _) -> []
+| Tree (Node2F (a, b)) -> List.rev_append (get_holes a) (get_holes b)
+| Tree (Node3F (a, b, c)) -> List.rev_append (get_holes a) (List.rev_append (get_holes b) (get_holes c))

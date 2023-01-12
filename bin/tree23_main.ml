@@ -25,13 +25,7 @@ let rec extract o t =
 
 let postproc t1 t2 tc1 tc2 = 
   let vars_of t = 
-    let rec aux acc = function
-      | Hole i -> MetaVarSet.add i acc
-      | Tree(LeafF _) -> acc
-      | Tree(Node2F (a, b)) -> aux (aux acc a) b
-      | Tree(Node3F (a, b, c)) -> aux (aux (aux acc a) b) c
-    in
-    aux MetaVarSet.empty t in
+    List.fold_left (fun acc v -> MetaVarSet.add v acc)  MetaVarSet.empty (get_holes t) in
   let keep_or_drop tc t vars =
     let rec aux tc t = 
       match (tc, t) with
@@ -88,6 +82,9 @@ let subtrees t =
       let acc3 = aux acc2 b in
       aux acc3 c in
   aux MetaVarSet.empty t
+
+let get_changes p = 
+  List.map (fun h -> Hole h) (get_holes p)
 
 let wcs s d = 
   let trees1 = subtrees s in 
@@ -176,19 +173,6 @@ let closure patc =
       else Node3C (aux a, aux b, aux c, ())
   in aux@@patch_to_patchv patc *)
 
-let get_changes p = 
-  let rec aux acc p =
-  match p with
-  | Hole (a, b) ->  Hole (a, b) :: acc
-  | Tree(LeafF _) -> acc
-  | Tree(Node2F (a, b)) ->
-    let acc1 = aux acc a in 
-    aux acc1 b 
-  | Tree(Node3F (a, b, c)) ->
-    let acc1 = aux acc a in 
-    let acc2 = aux acc1 b in 
-    aux acc2 c 
-  in aux [] p
 
 let diff_tree23 (s, d) = (BatPervasives.uncurry gcp)@@change_tree23 s d 
 
