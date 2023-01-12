@@ -128,8 +128,8 @@ let closure pat =
       let s = MetaVarSet.union s1 s2 in
       let d = MetaVarSet.union d1 d2 in
       if MetaVarSet.equal s d
-      then s, d, Hole ((Tree (Node2F (get_source a', get_source b')),Tree (Node2F (get_dest a', get_dest b')))) 
-      else s, d, Tree(Node2F (a', b'))
+      then s, d, Tree(Node2F (a', b'))
+      else s, d, Hole ((Tree (Node2F (get_source a', get_source b')),Tree (Node2F (get_dest a', get_dest b')))) 
     | Tree(Node3F (a, b, c)) -> 
       let s1, d1, a' = aux a in
       let s2, d2, b' = aux b in
@@ -137,8 +137,8 @@ let closure pat =
       let s = MetaVarSet.union (MetaVarSet.union s1 s2) s3 in
       let d = MetaVarSet.union (MetaVarSet.union d1 d2) d3 in
       if MetaVarSet.equal s d
-      then s, d, Hole ((Tree (Node3F (get_source a', get_source b', get_source c')),Tree (Node3F (get_dest a', get_dest b', get_dest c')))) 
-      else s, d, Tree(Node3F (a', b', c'))
+      then s, d, Tree(Node3F (a', b', c'))
+      else s, d, Hole ((Tree (Node3F (get_source a', get_source b', get_source c')),Tree (Node3F (get_dest a', get_dest b', get_dest c')))) 
   in aux pat
 
 let diff_tree23 (s, d) = 
