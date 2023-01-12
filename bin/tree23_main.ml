@@ -64,18 +64,21 @@ let rec gcp tc1 tc2 =
   | _ -> Hole(tc1, tc2)
 
 let rec decorate t = 
-  let dig = Digest.string@@Sexp.to_string_mach@@sexp_of_tree23 t in
   match t with 
-  | Leaf a -> {data = LeafF a; dig = dig}
+  | Leaf a -> 
+    let s = Printf.sprintf "(Leaf %s)" a in
+    {data = LeafF a; dig = Digest.string s}, s
   | Node2 (a, b)-> 
-    let a_h = decorate a in
-    let b_h = decorate b in
-    {data = Node2F (a_h, b_h); dig = dig}
+    let a_h, a_s = decorate a in
+    let b_h, b_s = decorate b in
+    let s = Printf.sprintf "(Node2 %s %s)" a_s b_s in
+    {data = Node2F (a_h, b_h); dig = Digest.string s}, s
   | Node3 (a, b, c) -> 
-    let a_h = decorate a in
-    let b_h = decorate b in
-    let c_h = decorate c in
-    {data = Node3F (a_h, b_h,c_h); dig =dig}
+    let a_h, a_s = decorate a in
+    let b_h, b_s = decorate b in
+    let c_h, c_s = decorate c in
+    let s = Printf.sprintf "(Node3 %s %s %s)" a_s b_s c_s in
+    {data = Node3F (a_h, b_h,c_h); dig =Digest.string s}, s
 
 let subtrees t = 
   let rec aux acc t =
@@ -103,8 +106,8 @@ let wcs s d =
     MetaVarSet.find_opt h inters 
 
 let change_tree23 s d = 
-  let s_h = decorate s in
-  let d_h = decorate d in
+  let s_h, _ = decorate s in
+  let d_h, _ = decorate d in
   let oracle = wcs s_h d_h in
   postproc s d (extract oracle s_h) (extract oracle d_h)
 
