@@ -4,10 +4,10 @@ open Tree_diff_lib.Tree23lib
 let context = ref 1
 let file = ref "data/tree23.dat"
 let args =
-    [
-        ("-context", Arg.Set_int context, "Set to 1 to contain the context, 2 to remove context. Default to contain the context.");
-        ("-file", Arg.Set_string file, "The file of input data.")
-    ]
+  [
+    ("-context", Arg.Set_int context, "Set to 1 to contain the context, 2 to remove context. Default to contain the context.");
+    ("-file", Arg.Set_string file, "The file of input data.")
+  ]
 let usage = "Tree23."
 let () = Arg.parse
     args (fun x -> raise (Arg.Bad ("Bad argument : " ^ x))) usage
@@ -105,55 +105,29 @@ let get_source t = map_holes (fun (s, _) -> s) t
 
 let get_dest t = map_holes (fun (d, _) -> d) t
 
-(* 
-
-let rec patch_to_patchv (p:patch23) = 
-  match p with
-  | Hole ((s, d), _) -> 
-    let s_hls = tree23c_holes s in
-    let d_hls = tree23c_holes d in
-    Hole ((s, d), (s_hls, d_hls, MetaVarSet.equal s_hls d_hls))
-  | LeafC l -> LeafC l 
-  | Node2C (a, b, _) -> 
-    let av = patch_to_patchv a in
-    let bv = patch_to_patchv b in
-    let s_hls1, d_hls1, _ = patch23v_hls av in
-    let s_hls2, d_hls2, _ = patch23v_hls bv in
-    let s_hls = MetaVarSet.union s_hls1 s_hls2 in
-    let d_hls = MetaVarSet.union d_hls1 d_hls2 in 
-    Node2C (av, bv, (s_hls, d_hls, MetaVarSet.equal s_hls d_hls))
-  | Node3C (a, b, c, _) -> 
-    let av = patch_to_patchv a in
-    let bv = patch_to_patchv b in
-    let cv = patch_to_patchv c in
-    let s_hls1, d_hls1, _ = patch23v_hls av in
-    let s_hls2, d_hls2, _ = patch23v_hls bv in
-    let s_hls3, d_hls3, _ = patch23v_hls cv in
-    let s_hls = MetaVarSet.union s_hls3 (MetaVarSet.union s_hls1 s_hls2) in
-    let d_hls = MetaVarSet.union d_hls3 (MetaVarSet.union d_hls1 d_hls2) in
-    Node3C (av, bv, cv, (s_hls, d_hls, MetaVarSet.equal s_hls d_hls))    
-
-let is_closed = function
-  | Hole (_, (_,_, c)) | Node2C(_,_, (_,_, c)) | Node3C (_, _, _,(_,_, c)) -> c
-  | LeafC _ -> true
-
-
-
-let closure patc = 
+let closure pat = 
   let rec aux p = 
     match p with
-    | Hole (hl, _) -> Hole (hl, ())  
-    | LeafC l -> LeafC l
-    | Node2C (a , b, _) ->
-      if is_closed p && ((is_closed a && is_closed b) == false) 
-      then Hole ((Node2C (get_source a, get_source b, ()), Node2C (get_dest a, get_dest b, ())), ()) 
-      else Node2C (aux a, aux b, ())
-    | Node3C (a, b, c, _) -> 
-      if is_closed p && ((is_closed a && is_closed b && is_closed c) == false) 
-      then Hole ((Node3C (get_source a, get_source b, get_source c, ()), Node3C (get_dest a, get_dest b, get_dest c, ())), ())
-      else Node3C (aux a, aux b, aux c, ())
-  in aux@@patch_to_patchv patc *)
-
+    | Hole (s, d) -> tree23c_holes s, tree23c_holes d, Hole (s, d) 
+    | Tree(LeafF l) -> MetaVarSet.empty, MetaVarSet.empty, Tree(LeafF l)
+    | Tree(Node2F (a, b)) ->
+      let s1, d1, a' = aux a in
+      let s2, d2, b' = aux b in
+      let s = MetaVarSet.union s1 s2 in
+      let d = MetaVarSet.union d1 d2 in
+      if MetaVarSet.equal s d
+      then s, d, Hole ((Tree (Node2F (get_source a', get_source b')),Tree (Node2F (get_dest a', get_dest b')))) 
+      else s, d, Tree(Node2F (a', b'))
+    | Tree(Node3F (a, b, c)) -> 
+      let s1, d1, a' = aux a in
+      let s2, d2, b' = aux b in
+      let s3, d3, c' = aux c in
+      let s = MetaVarSet.union (MetaVarSet.union s1 s2) s3 in
+      let d = MetaVarSet.union (MetaVarSet.union d1 d2) d3 in
+      if MetaVarSet.equal s d
+      then s, d, Hole ((Tree (Node3F (get_source a', get_source b', get_source c')),Tree (Node3F (get_dest a', get_dest b', get_dest c')))) 
+      else s, d, Tree(Node3F (a', b', c'))
+  in aux pat
 
 let diff_tree23 (s, d) = (BatPervasives.uncurry gcp)@@change_tree23 s d 
 
@@ -164,13 +138,13 @@ let _ =
       Printf.printf "Tree2 %s\n" (Sexp.to_string_hum@@sexp_of_tree23 t2);
       Stdlib.flush Stdlib.stdout
     in
-    let patch = (* closure@@ *) diff_tree23 t in
+    let _, _, patch =  closure@@diff_tree23 t in
     if !context == 1 then 
       print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch 
     else  
       let changes = get_changes patch in
       List.iter (fun c -> 
-        let cs = sexp_of_patch23 c in
-       print_endline@@Sexp.to_string_hum@@cs) changes in 
+          let cs = sexp_of_patch23 c in
+          print_endline@@Sexp.to_string_hum@@cs) changes in 
   let sexps = load_tree23s !file in
   List.iter (fun x -> aux x; print_newline ()) sexps
