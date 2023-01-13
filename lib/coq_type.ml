@@ -1,3 +1,5 @@
+type lemma_data = {name : string; data : string list}
+
 type term =
 | Rel       of int
 | Evar      of (int * term list)

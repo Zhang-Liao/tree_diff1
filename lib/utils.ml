@@ -1,3 +1,4 @@
+open Coq_type
 (* ------------------------------------------------------------ *)
 (* List operation *)
 let rec removelast = function
@@ -22,23 +23,18 @@ let list_remove l i =
 
 (* ------------------------------------------------------------ *)
 (* IO *)
-let read_lines file : string list =
+let read_lines file  =
   let ic = open_in file in
   let try_read () =
     try Some (input_line ic) with End_of_file -> None in
-  let rec loop acc = match try_read () with
+  let rec loop acc curr_lemma = match try_read () with
     | Some s -> 
         let split_s = String.split_on_char '\t' s in
-        if String.equal (List.hd split_s) "#lemma" then 
-        loop acc else loop (s::acc)
+        let s_0 = List.hd split_s  in
+        if String.equal s_0 "#lemma" then
+          let next_lemma = List.nth split_s 1 in 
+          loop (curr_lemma::acc) {name = next_lemma; data =[]} 
+        else 
+          loop acc {curr_lemma with data = s_0:: curr_lemma.data} 
     | None -> close_in ic; List.rev acc in
-  loop []
-
-let load_data f =
-  let load_row r = 
-    let r = String.split_on_char '\t' r in
-    let ps = List.hd r in
-    let tac = List.nth r 1 in
-    ps, tac in
-  let ls = read_lines f in
-  List.map load_row ls
+  loop [] {name = ""; data =[]}
