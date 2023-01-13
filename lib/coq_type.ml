@@ -1,34 +1,31 @@
-type lemma_data = {name : string; data : string list}
-
+open Sexplib.Conv
 type term =
-| Rel       of int
-| Evar      of (int * term list)
-| Construct of (string * string) * string list
-| Ind       of string * string list
+| Rel       of int * string
 | Var       of string
-| Const     of string * string list 
-| Int       of int (* ? UInt63.t *)
-| Float     of float (* ? Float64.t *)
-| Sort      of string list
 | Meta      of int
+| Evar      of int * term list
+| Sort      of string list
 | Cast      of term * string * term
-| Prod      of (string * string) * term * term
-| Lambda    of (string * string) * term * term
-| LetIn     of (string * string) * term * term * term
+| Prod      of string * string * term * term
+| Lambda    of string * string * term * term
+| LetIn     of string * string * term * term * term
 | App       of term * term array
+| Const     of string * string list 
+| Ind       of string * string list
+| Construct of string list * string list
 | Case      of string * term * term * term array
 | Fix       of string list * term list * term list
 | CoFix     of string list * term list * term list
-| Proj      of string * term
+| Proj      of string * term 
+| Int       of int
+| Float     of float [@@deriving sexp]
 
-(* term for lgg in anti-unification *)
 type hyp = 
 (* id * type *)
 | LocalAssum of string * term
 (* id * term * type *)
 | LocalDef of string * term * term
 
-type proof_state = hyp list * term
 
 let hyp_id = function
   | LocalAssum (id, _) | LocalDef (id, _, _) -> id
