@@ -31,7 +31,6 @@ let rec tree_to_treec t: metavar tree23c =
 (* --------------------------------------------------------- *)
 (* S-expression *)
 let load_tree23s f =
-  (* let open Core.Sexp in *)
   let sexps = load_sexps f in 
   List.map (function 
       | List [List [Atom "S"; s]; List [Atom "D"; d]] -> 

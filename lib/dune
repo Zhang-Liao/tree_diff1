@@ -1,4 +1,4 @@
 (library
  (name tree_diff_lib)
- (libraries core)
+ (libraries sexplib)
  (preprocess (pps ppx_sexp_conv)))
