@@ -1,4 +1,4 @@
 (executable
  (public_name tree_diff)
- (name tree23_main)
- (libraries tree_diff_lib batteries sexplib))
+ (name coq_main)
+ (libraries batteries sexplib tree_diff_lib))
