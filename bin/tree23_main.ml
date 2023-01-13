@@ -23,7 +23,7 @@ let rec extract o t =
       | Node2F (a, b) -> Tree(Node2F (extract o a, extract o b))   
       | Node3F (a, b, c) -> Tree(Node3F (extract o a, extract o b, extract o c)))
 
-let postproc t1 t2 tc1 tc2 = 
+let postproc t1 t2 (tc1, tc2) = 
   let vars_of t = 
     List.fold_left (fun acc v -> MetaVarSet.add v acc)  MetaVarSet.empty (get_holes t) in
   let keep_or_drop tc t vars map =
@@ -55,7 +55,7 @@ let postproc t1 t2 tc1 tc2 =
   let tc1', map0 = keep_or_drop tc1 t1 reorder_vars IntMap.empty in 
   let tc2', map1 = keep_or_drop tc2 t2 reorder_vars map0 in
   tc1', tc2', map1
-  
+
 let rec gcp tc1 tc2 = 
   match tc1, tc2 with
   | Tree(LeafF t), Tree(LeafF t') when t = t' -> Tree (LeafF t)
@@ -67,18 +67,18 @@ let rec decorate t =
   match t with 
   | Leaf a -> 
     let s = Printf.sprintf "(Leaf %s)" a in
-    {data = LeafF a; dig = Digest.string s}, s
+    {data = LeafF a; dig = Digest.string s}
   | Node2 (a, b)-> 
-    let a_h, a_s = decorate a in
-    let b_h, b_s = decorate b in
-    let s = Printf.sprintf "(Node2 %s %s)" a_s b_s in
-    {data = Node2F (a_h, b_h); dig = Digest.string s}, s
+    let a_h = decorate a in
+    let b_h = decorate b in
+    let s = Printf.sprintf "(Node2 %s %s)" a_h.dig b_h.dig in
+    {data = Node2F (a_h, b_h); dig = Digest.string s}
   | Node3 (a, b, c) -> 
-    let a_h, a_s = decorate a in
-    let b_h, b_s = decorate b in
-    let c_h, c_s = decorate c in
-    let s = Printf.sprintf "(Node3 %s %s %s)" a_s b_s c_s in
-    {data = Node3F (a_h, b_h, c_h); dig =Digest.string s}, s
+    let a_h = decorate a in
+    let b_h = decorate b in
+    let c_h = decorate c in
+    let s = Printf.sprintf "(Node3 %s %s %s)" a_h.dig b_h.dig c_h.dig in
+    {data = Node3F (a_h, b_h, c_h); dig =Digest.string s}
 
 let subtrees t = 
   let rec aux acc t =
@@ -95,7 +95,9 @@ let subtrees t =
   aux MetaVarSet.empty t
 
 let get_changes p = 
-  List.map (fun h -> Hole h) (get_holes p)
+  List.filter_map (function 
+      | (a, b) when a = b -> None
+      | h -> Some (Hole h)) (get_holes p)
 
 let wcs s d = 
   let trees1 = subtrees s in 
@@ -106,10 +108,10 @@ let wcs s d =
     MetaVarSet.find_opt h inters 
 
 let change_tree23 s d = 
-  let s_h, _ = decorate s in
-  let d_h, _ = decorate d in
+  let s_h = decorate s in
+  let d_h = decorate d in
   let oracle = wcs s_h d_h in
-  postproc s d (extract oracle s_h) (extract oracle d_h)
+  postproc s d (extract oracle s_h, extract oracle d_h)
 
 let tree23c_holes t =  MetaVarSet.of_list@@get_holes t
 
@@ -127,19 +129,22 @@ let closure pat =
       let s2, d2, b' = aux b in
       let s = MetaVarSet.union s1 s2 in
       let d = MetaVarSet.union d1 d2 in
-      if MetaVarSet.equal s d
-      then s, d, Tree(Node2F (a', b'))
-      else s, d, Hole ((Tree (Node2F (get_source a', get_source b')),Tree (Node2F (get_dest a', get_dest b')))) 
+      let res = if MetaVarSet.equal s d
+        then Tree(Node2F (a', b'))
+        else Hole ((Tree (Node2F (get_source a', get_source b')),Tree (Node2F (get_dest a', get_dest b')))) in
+      s, d, res
     | Tree(Node3F (a, b, c)) -> 
       let s1, d1, a' = aux a in
       let s2, d2, b' = aux b in
       let s3, d3, c' = aux c in
       let s = MetaVarSet.union (MetaVarSet.union s1 s2) s3 in
       let d = MetaVarSet.union (MetaVarSet.union d1 d2) d3 in
-      if MetaVarSet.equal s d
-      then s, d, Tree(Node3F (a', b', c'))
-      else s, d, Hole ((Tree (Node3F (get_source a', get_source b', get_source c')),Tree (Node3F (get_dest a', get_dest b', get_dest c')))) 
-  in aux pat
+      let res = if MetaVarSet.equal s d
+        then Tree(Node3F (a', b', c'))
+        else Hole ((Tree (Node3F (get_source a', get_source b', get_source c')),Tree (Node3F (get_dest a', get_dest b', get_dest c')))) in
+      s, d, res
+  in 
+  let _,_, pat' = aux pat in pat'
 
 let diff_tree23 (s, d) = 
   let t0, t1, map = change_tree23 s d in
@@ -153,7 +158,7 @@ let _ =
       Stdlib.flush Stdlib.stdout
     in
     let patch, map = diff_tree23 t in
-    let _, _, patch =  closure patch in
+    let patch =  closure patch in
     if !context == 1 then 
       let _ = print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch in 
       IntMap.iter (fun i t -> Printf.printf "Hole %i\tTerm %s\n" i (Sexp.to_string_hum@@sexp_of_tree23 t)) map; Stdlib.flush Stdlib.stdout

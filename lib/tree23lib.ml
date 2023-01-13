@@ -35,23 +35,32 @@ let load_tree23s f =
   List.map (function 
       | List [List [Atom "S"; s]; List [Atom "D"; d]] -> 
         tree23_of_sexp s, tree23_of_sexp d 
-        (* s1, d1 *)
+      (* s1, d1 *)
       | _ -> failwith "The input in the dataset has a wrong format. Each line must contain two trees"
     ) sexps
 
 (* --------------------------------------------------------- *)
 (* Map and Fold *)
-let rec get_holes = function
-| Hole h -> [h]
-| Tree (LeafF _) -> []
-| Tree (Node2F (a, b)) -> List.rev_append (get_holes a) (get_holes b)
-| Tree (Node3F (a, b, c)) -> List.rev_append (get_holes a) (List.rev_append (get_holes b) (get_holes c))
+let get_holes t = 
+  let rec aux acc = function
+    | Hole h -> h::acc
+    | Tree (LeafF _) -> acc
+    | Tree (Node2F (a, b)) -> 
+      let acc1 = aux acc a in
+      let acc2 = aux acc1 b in
+      List.rev_append acc1 acc2
+    | Tree (Node3F (a, b, c)) -> 
+      let acc1 = aux acc a in
+      let acc2 = aux acc1 b in
+      let acc3 = aux acc2 c in
+      List.rev_append acc3 (List.rev_append acc1 acc2)
+  in aux [] t
 
 let map_holes f t = 
   let rec aux t = 
-  match t with
-  | Hole h -> f h 
-  | Tree (LeafF l) -> Tree (LeafF l)
-  | Tree (Node2F (a, b)) -> Tree (Node2F (aux a, aux b))
-  | Tree (Node3F (a, b, c)) -> Tree (Node3F (aux a, aux b, aux c))
+    match t with
+    | Hole h -> f h 
+    | Tree (LeafF l) -> Tree (LeafF l)
+    | Tree (Node2F (a, b)) -> Tree (Node2F (aux a, aux b))
+    | Tree (Node3F (a, b, c)) -> Tree (Node3F (aux a, aux b, aux c))
   in aux t
