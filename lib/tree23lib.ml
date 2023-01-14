@@ -47,13 +47,11 @@ let get_holes t =
     | Tree (LeafF _) -> acc
     | Tree (Node2F (a, b)) -> 
       let acc1 = aux acc a in
-      let acc2 = aux acc1 b in
-      List.rev_append acc1 acc2
+      aux acc1 b 
     | Tree (Node3F (a, b, c)) -> 
       let acc1 = aux acc a in
       let acc2 = aux acc1 b in
-      let acc3 = aux acc2 c in
-      List.rev_append acc3 (List.rev_append acc1 acc2)
+      aux acc2 c 
   in aux [] t
 
 let map_holes f t = 
