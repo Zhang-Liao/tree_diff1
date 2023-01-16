@@ -14,16 +14,15 @@ let () = Arg.parse
 
 module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
-module IntSet = Set.Make(Int)
 
 let rec extract o t = 
   match o t with
   | Some _ -> Hole t
   | None -> (
       match t.data with
-      | LeafF a -> Tree (LeafF a)
-      | Node2F (a, b) -> Tree(Node2F (extract o a, extract o b))   
-      | Node3F (a, b, c) -> Tree(Node3F (extract o a, extract o b, extract o c)))
+      | Leaf a -> Tree (Leaf a)
+      | Node2 (a, b) -> Tree(Node2 (extract o a, extract o b))   
+      | Node3 (a, b, c) -> Tree(Node3 (extract o a, extract o b, extract o c)))
 
 (* evaluate twice ?? *)
 let vars_of t = 
@@ -47,45 +46,44 @@ let reorder (tc1, tc2) =
       else
         StrMap.add th.dig (treeh_to_tree th, i) acc, i+1) 
       (StrMap.empty, 0) (get_holes tc1) in
-  let tc1' = map_holes (fun th -> let _t, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) tc1 in
-  let tc2' = map_holes (fun th -> let _t, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) tc2 in 
-  let reorder_vars = 
+  let reorder_vars t = map_holes (fun th -> let _, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) t in
+  let reordered_vars = 
     StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in 
-  tc1', tc2', reorder_vars
+  reorder_vars tc1, reorder_vars tc2, reordered_vars
 
 let rec gcp tc1 tc2 = 
   match tc1, tc2 with
-  | Tree(LeafF t), Tree(LeafF t') when t = t' -> Tree (LeafF t)
-  | Tree(Node2F (a, b)), Tree(Node2F(a', b')) -> Tree(Node2F (gcp a a', gcp b b'))
-  | Tree(Node3F (a, b, c)), Tree(Node3F(a', b', c')) -> Tree(Node3F (gcp a a', gcp b b', gcp c c'))
+  | Tree(Leaf t), Tree(Leaf t') when t = t' -> Tree (Leaf t)
+  | Tree(Node2 (a, b)), Tree(Node2(a', b')) -> Tree(Node2 (gcp a a', gcp b b'))
+  | Tree(Node3 (a, b, c)), Tree(Node3(a', b', c')) -> Tree(Node3 (gcp a a', gcp b b', gcp c c'))
   | _ -> Hole(tc1, tc2)
 
 let rec decorate t = 
   match t with 
   | Leaf a -> 
     let s = Printf.sprintf "(Leaf %s)" a in
-    {data = LeafF a; dig = Digest.string s}
+    {data = Leaf a; dig = Digest.string s}
   | Node2 (a, b)-> 
     let a_h = decorate a in
     let b_h = decorate b in
     let s = Printf.sprintf "(Node2 %s %s)" a_h.dig b_h.dig in
-    {data = Node2F (a_h, b_h); dig = Digest.string s}
+    {data = Node2 (a_h, b_h); dig = Digest.string s}
   | Node3 (a, b, c) -> 
     let a_h = decorate a in
     let b_h = decorate b in
     let c_h = decorate c in
     let s = Printf.sprintf "(Node3 %s %s %s)" a_h.dig b_h.dig c_h.dig in
-    {data = Node3F (a_h, b_h, c_h); dig = Digest.string s}
+    {data = Node3 (a_h, b_h, c_h); dig = Digest.string s}
 
 let subtrees t = 
   let rec aux acc t =
     let acc1 = MetaVarSet.add t.dig acc in 
     match t.data with
-    | LeafF _ -> acc1
-    | Node2F (a, b) -> 
+    | Leaf _ -> acc1
+    | Node2 (a, b) -> 
       let acc2 = aux acc1 a in
       aux acc2 b 
-    | Node3F (a, b, c) -> 
+    | Node3 (a, b, c) -> 
       let acc2 = aux acc1 a in
       let acc3 = aux acc2 b in
       aux acc3 c in
@@ -120,24 +118,24 @@ let closure pat =
   let rec aux p = 
     match p with
     | Hole (s, d) -> tree23c_holes s, tree23c_holes d, Hole (s, d) 
-    | Tree(LeafF l) -> MetaVarSet.empty, MetaVarSet.empty, Tree(LeafF l)
-    | Tree(Node2F (a, b)) ->
+    | Tree(Leaf l) -> MetaVarSet.empty, MetaVarSet.empty, Tree(Leaf l)
+    | Tree(Node2 (a, b)) ->
       let s1, d1, a' = aux a in
       let s2, d2, b' = aux b in
       let s = MetaVarSet.union s1 s2 in
       let d = MetaVarSet.union d1 d2 in
       s, d, if MetaVarSet.equal s d
-      then Tree(Node2F (a', b'))
-      else Hole ((Tree (Node2F (get_source a', get_source b')),Tree (Node2F (get_dest a', get_dest b')))) 
-    | Tree(Node3F (a, b, c)) -> 
+      then Tree(Node2 (a', b'))
+      else Hole ((Tree (Node2 (get_source a', get_source b')),Tree (Node2 (get_dest a', get_dest b')))) 
+    | Tree(Node3 (a, b, c)) -> 
       let s1, d1, a' = aux a in
       let s2, d2, b' = aux b in
       let s3, d3, c' = aux c in
       let s = MetaVarSet.union (MetaVarSet.union s1 s2) s3 in
       let d = MetaVarSet.union (MetaVarSet.union d1 d2) d3 in
       s, d, if MetaVarSet.equal s d
-      then Tree(Node3F (a', b', c'))
-      else Hole ((Tree (Node3F (get_source a', get_source b', get_source c')),Tree (Node3F (get_dest a', get_dest b', get_dest c')))) 
+      then Tree(Node3 (a', b', c'))
+      else Hole ((Tree (Node3 (get_source a', get_source b', get_source c')),Tree (Node3 (get_dest a', get_dest b', get_dest c')))) 
   in 
   let _,_, pat' = aux pat in pat'
 

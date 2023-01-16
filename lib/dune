@@ -1,4 +1,5 @@
 (library
  (name tree_diff_lib)
  (libraries sexplib)
+ (flags :standard -rectypes -w -27)
  (preprocess (pps ppx_sexp_conv)))

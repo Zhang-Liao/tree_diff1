@@ -1,4 +1,5 @@
 (executable
  (public_name tree_diff)
  (name tree23_main)
- (libraries batteries sexplib tree_diff_lib))
+ (libraries batteries sexplib tree_diff_lib)
+ (flags :standard -rectypes -w -27))
