@@ -12,11 +12,11 @@ type metavar = string [@@deriving sexp]
 type tree23h = {data: tree23h tree23_functor; dig :string} 
 
 type 'a tree23c = 
-    Tree of 'a tree23c tree23_functor
+    Tree of 'a tree23c tree23_functor 
   | Hole of 'a  [@@deriving sexp]
 
 type 'a change23 = 'a tree23c * 'a tree23c [@@deriving sexp]
-type patch23 = (metavar change23) tree23c [@@deriving sexp]
+type patch23 = (metavar change23) tree23c 
 
 (* --------------------------------------------------------- *)
 (* S-expression *)
@@ -59,6 +59,14 @@ let rec map_treeh f t =
   | Node2 (a, b) ->  f (Node2 (map_treeh f a, map_treeh f b))
   | Node3 (a, b, c) -> f (Node3 (map_treeh f a, map_treeh f b, map_treeh f c))
 
+let sexp_of_patch23 t = 
+  let rec aux t = 
+    match t with
+    | Hole h -> sexp_of_change23 sexp_of_string h
+    | Tree (Leaf l) -> sexp_of_string l
+    | Tree (Node2 (a, b)) -> List [Atom "Node2"; aux a ; aux b]
+    | Tree (Node3 (a, b, c)) -> List [Atom "Node3"; aux a; aux b; aux c]
+  in aux t
 (* --------------------------------------------------------- *)
 (* Type conversion  *)
 let treeh_to_treec t =  map_treeh (fun x -> Tree x) t 
