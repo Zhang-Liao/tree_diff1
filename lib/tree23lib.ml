@@ -28,7 +28,7 @@ let rec tree_to_treec t: metavar tree23c =
   | Node2 (a, b) ->  Tree(Node2F (tree_to_treec a, tree_to_treec b))
   | Node3 (a, b, c) -> Tree(Node3F (tree_to_treec a, tree_to_treec b, tree_to_treec c))
 
-let rec treeh_to_treec t: metavar tree23c = 
+let rec treeh_to_treec t = 
   match t.data with 
   | LeafF l -> Tree (LeafF l)
   | Node2F (a, b) ->  Tree(Node2F (treeh_to_treec a, treeh_to_treec b))
@@ -74,20 +74,4 @@ let map_holes f t =
     | Tree (Node2F (a, b)) -> Tree (Node2F (aux a, aux b))
     | Tree (Node3F (a, b, c)) -> Tree (Node3F (aux a, aux b, aux c))
   in aux t
-
-let map_fold_holes f t acc = 
-  let rec aux t acc = 
-    match t with
-    | Hole h -> f acc h 
-    | Tree (LeafF l) -> Tree (LeafF l), acc
-    | Tree (Node2F (a, b)) -> 
-      let a', acc1 = aux a acc in
-      let b', acc2 = aux b acc1 in
-      Tree (Node2F (a', b')), acc2
-    | Tree (Node3F (a, b, c)) -> 
-      let a', acc1 = aux a acc in
-      let b', acc2 = aux b acc1 in
-      let c', acc3 = aux c acc2 in
-      Tree (Node3F (a', b', c')), acc3    
-  in aux t acc
 

@@ -14,6 +14,8 @@ let () = Arg.parse
 
 module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
+module IntSet = Set.Make(Int)
+
 let rec extract o t = 
   match o t with
   | Some _ -> Hole t
@@ -23,20 +25,33 @@ let rec extract o t =
       | Node2F (a, b) -> Tree(Node2F (extract o a, extract o b))   
       | Node3F (a, b, c) -> Tree(Node3F (extract o a, extract o b, extract o c)))
 
-let postproc0 tc1 tc2 = 
-  let vars_of t = 
-    List.fold_left (fun acc th -> MetaVarSet.add th.dig acc)  MetaVarSet.empty (get_holes t) in
-  let vars1 = vars_of tc1 in
-  let vars2 = vars_of tc2 in
-  let vars = MetaVarSet.inter vars1 vars2 in
-  let keep_or_drop hl=
-    match StrMap.find_opt hl.dig with
+(* evaluate twice ?? *)
+let vars_of t = 
+  List.fold_left (fun acc th -> MetaVarSet.add th.dig acc)  MetaVarSet.empty (get_holes t) 
+
+let inter_vars t1 t2 =  MetaVarSet.inter (vars_of t1) (vars_of t2)
+
+let postproc tc1 tc2 = 
+  let vars = inter_vars tc1 tc2 in
+  let keep_or_drop hl =
+    match MetaVarSet.find_opt hl.dig vars with
     | None -> treeh_to_treec hl
-    | Some reorder_h -> Hole hl.dig
+    | Some _ -> Hole hl 
   in
-  let tc1', map0 = map_fold_holes keep_or_drop tc1 IntMap.empty in 
-  let tc2', map1 = map_fold_holes keep_or_drop tc2 map0 in
-  tc1', tc2', map1
+  map_holes keep_or_drop tc1, map_holes keep_or_drop tc2 
+
+let reorder (tc1, tc2) = 
+  let var_terms, _ = List.fold_left (fun (acc, i) th ->
+      if StrMap.exists (fun key _ -> String.equal key th.dig) acc then
+        acc, i     
+      else
+        StrMap.add th.dig (treeh_to_tree th, i) acc, i+1) 
+      (StrMap.empty, 0) (get_holes tc1) in
+  let tc1' = map_holes (fun th -> let _t, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) tc1 in
+  let tc2' = map_holes (fun th -> let _t, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) tc2 in 
+  let reorder_vars = 
+    StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in 
+  tc1', tc2', reorder_vars
 
 let rec gcp tc1 tc2 = 
   match tc1, tc2 with
@@ -93,7 +108,7 @@ let change_tree23 s d =
   let s_h = decorate s in
   let d_h = decorate d in
   let oracle = wcs s_h d_h in
-  postproc0 (extract oracle s_h) (extract oracle d_h)
+  reorder@@postproc (extract oracle s_h) (extract oracle d_h)
 
 let tree23c_holes t =  MetaVarSet.of_list@@get_holes t
 
@@ -112,8 +127,8 @@ let closure pat =
       let s = MetaVarSet.union s1 s2 in
       let d = MetaVarSet.union d1 d2 in
       s, d, if MetaVarSet.equal s d
-        then Tree(Node2F (a', b'))
-        else Hole ((Tree (Node2F (get_source a', get_source b')),Tree (Node2F (get_dest a', get_dest b')))) 
+      then Tree(Node2F (a', b'))
+      else Hole ((Tree (Node2F (get_source a', get_source b')),Tree (Node2F (get_dest a', get_dest b')))) 
     | Tree(Node3F (a, b, c)) -> 
       let s1, d1, a' = aux a in
       let s2, d2, b' = aux b in
@@ -121,8 +136,8 @@ let closure pat =
       let s = MetaVarSet.union (MetaVarSet.union s1 s2) s3 in
       let d = MetaVarSet.union (MetaVarSet.union d1 d2) d3 in
       s, d, if MetaVarSet.equal s d
-        then Tree(Node3F (a', b', c'))
-        else Hole ((Tree (Node3F (get_source a', get_source b', get_source c')),Tree (Node3F (get_dest a', get_dest b', get_dest c')))) 
+      then Tree(Node3F (a', b', c'))
+      else Hole ((Tree (Node3F (get_source a', get_source b', get_source c')),Tree (Node3F (get_dest a', get_dest b', get_dest c')))) 
   in 
   let _,_, pat' = aux pat in pat'
 
@@ -141,8 +156,8 @@ let _ =
     if !context == 1 then 
       let _ = Sexp.pp_hum_indent 4 Format.std_formatter (sexp_of_patch23 patch); Format.print_cut () in 
       IntMap.iter (fun _i t -> 
-      Sexp.pp_hum_indent 4 Format.std_formatter (sexp_of_tree23 t); Format.print_cut ()
-      ) map
+          Sexp.pp_hum_indent 4 Format.std_formatter (sexp_of_tree23 t); Format.print_cut ()
+        ) map
     else  
       let changes = get_changes patch in
       List.iter (fun c -> 
