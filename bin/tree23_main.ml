@@ -16,44 +16,26 @@ module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
 let rec extract o t = 
   match o t with
-  | Some i -> Hole t
+  | Some _ -> Hole t
   | None -> (
       match t.data with
       | LeafF a -> Tree (LeafF a)
       | Node2F (a, b) -> Tree(Node2F (extract o a, extract o b))   
       | Node3F (a, b, c) -> Tree(Node3F (extract o a, extract o b, extract o c)))
 
-let postproc tc1 tc2 = 
+let postproc0 tc1 tc2 = 
   let vars_of t = 
-    List.fold_left (fun acc v -> MetaVarSet.add v acc)  MetaVarSet.empty (get_holes t) in
-  let keep_or_drop tc vars map =
-    let rec aux tc map = 
-      match tc with
-      | Hole h -> (
-          match StrMap.find_opt h.dig vars with
-          | None -> tree_to_treec t, map
-          | Some reorder_h -> Hole (Stdlib.string_of_int reorder_h), IntMap.add reorder_h t map )
-      | Tree(LeafF l) -> Tree(LeafF l), map
-      | Tree(Node2F (a0, b0)) ->
-        let a2, map0 = aux a0 map in
-        let b2, map1 = aux b0 map0 in
-        Tree(Node2F (a2, b2)), map1
-      | Tree(Node3F (a0, b0, c0)) -> 
-        let a2, map0 = aux a0 map in
-        let b2, map1 = aux b0 map0 in
-        let c2, map2 = aux c0 map1 in
-        Tree(Node3F (a2, b2, c2)), map2
-      | _ -> failwith "tree23c's node is inconsistent with tree23's node" 
-    in aux tc map
-  in
+    List.fold_left (fun acc th -> MetaVarSet.add th.dig acc)  MetaVarSet.empty (get_holes t) in
   let vars1 = vars_of tc1 in
   let vars2 = vars_of tc2 in
   let vars = MetaVarSet.inter vars1 vars2 in
-  let reorder_vars, _ = 
-    MetaVarSet.fold (fun v (acc, i) -> 
-        StrMap.add v i acc, i +1) vars (StrMap.empty, 0) in
-  let tc1', map0 = keep_or_drop tc1 reorder_vars IntMap.empty in 
-  let tc2', map1 = keep_or_drop tc2 reorder_vars map0 in
+  let keep_or_drop hl=
+    match StrMap.find_opt hl.dig with
+    | None -> treeh_to_treec hl
+    | Some reorder_h -> Hole hl.dig
+  in
+  let tc1', map0 = map_fold_holes keep_or_drop tc1 IntMap.empty in 
+  let tc2', map1 = map_fold_holes keep_or_drop tc2 map0 in
   tc1', tc2', map1
 
 let rec gcp tc1 tc2 = 
@@ -111,13 +93,13 @@ let change_tree23 s d =
   let s_h = decorate s in
   let d_h = decorate d in
   let oracle = wcs s_h d_h in
-  postproc (extract oracle s_h) (extract oracle d_h)
+  postproc0 (extract oracle s_h) (extract oracle d_h)
 
 let tree23c_holes t =  MetaVarSet.of_list@@get_holes t
 
-let get_source t = map_holes (fun (s, _) -> s) t
+let get_source t = map_holes (fun (s, _) -> s) t 
 
-let get_dest t = map_holes (fun (_, d) -> d) t
+let get_dest t = map_holes (fun (_, d) -> d) t 
 
 let closure pat = 
   let rec aux p = 
