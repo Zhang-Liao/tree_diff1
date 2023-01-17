@@ -60,14 +60,24 @@ let map_holes f t =
     | Tree (Node3 (a, b, c)) -> Tree (Node3 (aux a, aux b, aux c))
   in aux t
 
-let rec map_treeh f t = 
-  match t.data with 
-  | Leaf l -> f (Leaf l)
-  | Node2 (a, b) ->  f (Node2 (map_treeh f a, map_treeh f b))
-  | Node3 (a, b, c) -> f (Node3 (map_treeh f a, map_treeh f b, map_treeh f c))
-
+let map_tree23_functor f0 f1 f2 f3 t =
+  let rec aux t = 
+  match f0 t with 
+  | Leaf l -> f1 (Leaf l)
+  | Node2 (a, b) -> f2 (aux a) (aux b)
+  | Node3 (a, b, c) -> f3  (aux a) (aux b) (aux c)
+  in aux t
 (* --------------------------------------------------------- *)
 (* Type conversion  *)
-let treeh_to_treec t =  map_treeh (fun x -> Tree x) t 
 
-let treeh_to_tree t = map_treeh (fun x -> x) t
+let treeh_to_treec t = map_tree23_functor 
+  (fun x -> x.data) 
+  (fun a -> Tree a) 
+  (fun a b -> Tree (Node2 (a, b))) 
+  (fun a b c -> Tree(Node3(a, b, c))) t 
+
+let treeh_to_tree t = map_tree23_functor 
+  (fun x -> x.data) 
+  (fun x -> x) 
+  (fun a b -> Node2 (a, b)) 
+  (fun a b c -> Node3(a, b, c)) t 
