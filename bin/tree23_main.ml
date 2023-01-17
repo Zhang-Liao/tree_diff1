@@ -89,11 +89,6 @@ let subtrees t =
       aux acc3 c in
   aux MetaVarSet.empty t
 
-let get_changes p = 
-  List.filter_map (function 
-      | (a, b) when a = b -> None
-      | h -> Some (Hole h)) (get_holes p)
-
 let wcs s d = 
   let trees1 = subtrees s in 
   let trees2 = subtrees d in
@@ -139,6 +134,10 @@ let closure pat =
   in 
   let _,_, pat' = aux pat in pat'
 
+let subst_ident pat map = map_holes (function
+  | (Hole a, Hole b) when a = b -> tree_to_treec@@IntMap.find (int_of_string a) map 
+  | h -> Hole h) pat
+
 let diff_tree23 (s, d) = 
   let t0, t1, map = change_tree23 s d in
   gcp t0 t1, map
@@ -152,7 +151,7 @@ let _ =
       Format.print_newline ()
     in
     let patch, map = diff_tree23 t in
-    let patch = closure patch in
+    let patch = subst_ident (closure patch) map in
     if !context then 
       let _ = Sexp.pp_hum Format.std_formatter (sexp_of_patch23 patch)
       ; Format.print_newline () in 
@@ -161,9 +160,9 @@ let _ =
           Sexp.pp_hum Format.std_formatter (sexp_of_tree23 t); Format.print_newline ()
         ) map
     else  
-      let changes = get_changes patch in
+      let changes = get_holes patch in
       List.iter (fun c -> 
-          let cs = sexp_of_patch23 c in
+          let cs = sexp_of_change23 sexp_of_metavar c in
           Sexp.pp_hum Format.std_formatter cs; Format.print_newline ()) changes in 
   let sexps = load_tree23s !file in
   List.iter (fun x -> aux x; Format.print_newline ()) sexps
