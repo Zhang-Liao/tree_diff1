@@ -1,11 +1,11 @@
 open Sexplib
 open Tree_diff_lib.Tree23lib
 
-let context = ref 1
+let context = ref false
 let file = ref "data/tree23.dat"
 let args =
   [
-    ("-context", Arg.Set_int context, "Set to 1 to contain the context, 2 to remove context. Default to contain the context.");
+    ("-context", Arg.Unit (fun () -> context := true), "Contain the context or not.");
     ("-file", Arg.Set_string file, "The file of input data.")
   ]
 let usage = "Tree23."
@@ -151,7 +151,7 @@ let _ =
     in
     let patch, map = diff_tree23 t in
     let patch = closure patch in
-    if !context == 1 then 
+    if !context then 
       let _ = Sexp.pp_hum_indent 4 Format.std_formatter (sexp_of_patch23 patch); Format.print_newline () in 
       IntMap.iter (fun i t -> 
           Format.pp_print_string Format.std_formatter (Printf.sprintf "Hole %i " i) ;
