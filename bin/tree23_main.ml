@@ -146,21 +146,24 @@ let diff_tree23 (s, d) =
 let _ = 
   let aux ((t1, t2) as t) =
     let _ = 
-      Sexp.pp_hum_indent 4 Format.std_formatter (sexp_of_tree23 t1); Format.print_newline (); (* ??? *)
-      Sexp.pp_hum_indent 4 Format.std_formatter (sexp_of_tree23 t2); Format.print_newline ()
+      Sexp.pp_hum Format.std_formatter (sexp_of_tree23 t1);
+      Format.print_newline (); (* ??? *)
+      Sexp.pp_hum Format.std_formatter (sexp_of_tree23 t2); 
+      Format.print_newline ()
     in
     let patch, map = diff_tree23 t in
     let patch = closure patch in
     if !context then 
-      let _ = Sexp.pp_hum_indent 4 Format.std_formatter (sexp_of_patch23 patch); Format.print_newline () in 
+      let _ = Sexp.pp_hum Format.std_formatter (sexp_of_patch23 patch)
+      ; Format.print_newline () in 
       IntMap.iter (fun i t -> 
           Format.pp_print_string Format.std_formatter (Printf.sprintf "Hole %i " i) ;
-          Sexp.pp_hum_indent 4 Format.std_formatter (sexp_of_tree23 t); Format.print_newline ()
+          Sexp.pp_hum Format.std_formatter (sexp_of_tree23 t); Format.print_newline ()
         ) map
     else  
       let changes = get_changes patch in
       List.iter (fun c -> 
           let cs = sexp_of_patch23 c in
-          Sexp.pp_hum_indent 4 Format.std_formatter cs; Format.print_newline ()) changes in 
+          Sexp.pp_hum Format.std_formatter cs; Format.print_newline ()) changes in 
   let sexps = load_tree23s !file in
   List.iter (fun x -> aux x; Format.print_newline ()) sexps
