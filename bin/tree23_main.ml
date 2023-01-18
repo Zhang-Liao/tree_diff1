@@ -39,17 +39,6 @@ let postproc tc1 tc2 =
   in
   map_holes keep_or_drop tc1, map_holes keep_or_drop tc2 
 
-let reorder (tc1, tc2) = 
-  let var_terms, _ = List.fold_left (fun (acc, i) th ->
-      if StrMap.exists (fun key _ -> String.equal key th.dig) acc then
-        acc, i     
-      else
-        StrMap.add th.dig (treeh_to_tree th, i) acc, i+1) 
-      (StrMap.empty, 0) (get_holes tc1) in
-  let reorder_vars t = map_holes (fun th -> let _, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) t in
-  let reordered_vars = 
-    StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in 
-  reorder_vars tc1, reorder_vars tc2, reordered_vars
 
 let rec gcp tc1 tc2 = 
   match tc1, tc2 with
@@ -101,9 +90,9 @@ let change_tree23 s d =
   let s_h = decorate s in
   let d_h = decorate d in
   let oracle = wcs s_h d_h in
-  reorder@@postproc (extract oracle s_h) (extract oracle d_h)
+  postproc (extract oracle s_h) (extract oracle d_h)
 
-let tree23c_holes t =  MetaVarSet.of_list@@get_holes t
+let tree23c_holes t =  MetaVarSet.of_list (List.map (fun x-> x.dig) (get_holes t))
 
 let get_source t = map_holes (fun (s, _) -> s) t 
 
@@ -134,13 +123,30 @@ let closure pat =
   in 
   let _,_, pat' = aux pat in pat'
 
-let subst_ident pat map = map_holes (function
-  | (Hole a, Hole b) when a = b -> tree_to_treec@@IntMap.find (int_of_string a) map 
-  | h -> Hole h) pat
+let reorder pat = 
+  let var_terms, _ = List.fold_left (fun (acc, i) th ->
+      if StrMap.exists (fun key _ -> String.equal key th.dig) acc then
+        acc, i     
+      else
+        StrMap.add th.dig (treeh_to_tree th, i) acc, i+1) 
+      (StrMap.empty, 0) (get_holes@@get_source pat)
+      in
+  let reorder_vars t = map_holes (fun th ->
+    let _, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) t in      
+  let reordered_patc = map_holes (fun (a, b) -> Hole (reorder_vars a, reorder_vars b)) pat in
+  let reordered_vars = 
+    StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in 
+  reordered_patc, reordered_vars
+
+let subst_ident patc = 
+  let no_ident_p = map_holes (function
+  | (Hole a, Hole b) when a.dig = b.dig -> treeh_to_treec a 
+  | h -> Hole h) patc in
+  reorder no_ident_p
 
 let diff_tree23 (s, d) = 
-  let t0, t1, map = change_tree23 s d in
-  gcp t0 t1, map
+  let t0, t1 = change_tree23 s d in
+  gcp t0 t1
 
 let _ = 
   let aux ((t1, t2) as t) =
@@ -150,8 +156,8 @@ let _ =
       Sexp.pp_hum Format.std_formatter (sexp_of_tree23 t2); 
       Format.print_newline ()
     in
-    let patch, map = diff_tree23 t in
-    let patch = subst_ident (closure patch) map in
+    let patch = diff_tree23 t in
+    let patch, map = subst_ident@@closure patch in
     if !context then 
       let _ = Sexp.pp_hum Format.std_formatter (sexp_of_patch23 patch)
       ; Format.print_newline () in 
