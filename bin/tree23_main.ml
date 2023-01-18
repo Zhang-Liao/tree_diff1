@@ -168,7 +168,7 @@ let _ =
     else  
       let changes = get_holes patch in
       List.iter (fun c -> 
-          let cs = sexp_of_change23 sexp_of_metavar c in
+          let cs = Sexp.List [Sexp.Atom "Hole"; sexp_of_change23 sexp_of_metavar c] in
           Sexp.pp_hum Format.std_formatter cs; Format.print_newline ()) changes in 
   let sexps = load_tree23s !file in
   List.iter (fun x -> aux x; Format.print_newline ()) sexps
