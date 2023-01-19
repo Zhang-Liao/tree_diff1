@@ -1,4 +1,11 @@
-((S (Node3 (Leaf t) (Node2 (Leaf u) (Leaf v)) (Node2 (Leaf w) (Leaf x)))) (D (Node3 (Leaf t) (Node2 (Leaf v) (Leaf u)) (Node2 (Leaf w') (Leaf x)))))
-((S (Node2 (Leaf t) (Leaf v))) (D (Node3 (Leaf t) (Node2 (Leaf v) (Leaf u)) (Node2 (Leaf w') (Leaf x)))))
-((S (Node3 (Leaf t) (Node3 (Leaf t) (Node2 (Leaf u) (Leaf v)) (Node2 (Leaf v) (Leaf u))) (Node2 (Leaf w) (Leaf x)))) (D (Node3 (Leaf t) (Node2 (Leaf v) (Leaf u)) (Node2 (Leaf w') (Leaf x)))))
-((S (Node3 (Leaf t) (Node3 (Leaf u) (Node2 (Leaf u) (Leaf v)) (Node2 (Leaf v) (Leaf u))) (Node2 (Leaf w) (Leaf x)))) (D (Node3 (Leaf t) (Node2 (Leaf v) (Leaf u)) (Node2 (Leaf w') (Leaf x)))))
+(Node3 (Leaf t) (Node2 (Leaf u) (Leaf v)) (Node2 (Leaf w) (Leaf x)))
+(Node3 (Leaf t) (Node2 (Leaf v) (Leaf u)) (Node2 (Leaf w') (Leaf x)))
+
+(Node2 (Leaf t) (Leaf v))
+(Node3 (Leaf t) (Node2 (Leaf v) (Leaf u)) (Node2 (Leaf w') (Leaf x)))
+
+(Node3 (Leaf t) (Node3 (Leaf t) (Node2 (Leaf u) (Leaf v)) (Node2 (Leaf v) (Leaf u))) (Node2 (Leaf w) (Leaf x)))
+(Node3 (Leaf t) (Node2 (Leaf v) (Leaf u)) (Node2 (Leaf w') (Leaf x)))
+
+(Node3 (Leaf t) (Node3 (Leaf u) (Node2 (Leaf u) (Leaf v)) (Node2 (Leaf v) (Leaf u))) (Node2 (Leaf w) (Leaf x)))
+(Node3 (Leaf t) (Node2 (Leaf v) (Leaf u)) (Node2 (Leaf w') (Leaf x)))
