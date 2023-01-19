@@ -30,9 +30,9 @@ type patch23 = (metavar change23) tree23c [@@deriving sexp_of]
 let load_tree23s f =
   let sexps = load_sexps f in
   Stdlib.fst@@List.fold_left (fun (acc, curr_exp) sexp ->
-    if curr_exp == None
-    then (acc, Some (tree23_of_sexp sexp))
-    else (Option.get curr_exp, tree23_of_sexp sexp)::acc, None
+      if curr_exp == None
+      then (acc, Some (tree23_of_sexp sexp))
+      else (Option.get curr_exp, tree23_of_sexp sexp)::acc, None
     ) ([], None) sexps
 
 (* --------------------------------------------------------- *)
@@ -59,18 +59,21 @@ let map_holes f t =
     | Tree (Node3 (a, b, c)) -> Tree (Node3 (aux a, aux b, aux c))
   in aux t
 
-let map_tree_functor f0 f1 t =
-  let rec aux t =
-  match f0 t with
-  | Leaf l -> f1 (Leaf l)
-  | Node2 (a, b) -> f1 (Node2 (aux a, aux b))
-  | Node3 (a, b, c) -> f1 (Node3 (aux a, aux b, aux c))
-  in aux t
+let map_tree_functor f t =
+  match t with
+  | Leaf l -> Leaf l
+  | Node2 (a, b) -> Node2 (f a, f b)
+  | Node3 (a, b, c) -> Node3 (f a, f b, f c)
+
+let rec map_tree23c f t =
+  match t with
+  | Hole h -> f h
+  | Tree tre -> Tree (map_tree_functor (map_tree23c f) tre)
 
 (* --------------------------------------------------------- *)
 (* Type conversion  *)
-let treeh_to_treec t = map_tree_functor (fun x -> x.data) (fun x -> Tree x) t
+let rec treeh_to_tree t = map_tree_functor (fun x -> treeh_to_tree x) t.data
 
-let treeh_to_tree t = map_tree_functor  (fun x -> x.data) (fun x -> x) t
+let rec treeh_to_treec t = Tree (map_tree_functor (fun x ->  treeh_to_treec x) t.data)
 
-let tree_to_treec t = map_tree_functor  (fun x -> x) (fun x -> Tree x) t
+let rec tree_to_treec t = Tree (map_tree_functor (fun x ->  tree_to_treec x) t)
