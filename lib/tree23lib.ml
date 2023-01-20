@@ -67,11 +67,6 @@ let rec map_tree23c f t =
   | Hole h -> f h
   | Tree tre -> Tree (map_tree_functor (map_tree23c f) tre)
 
-(* let rec fold_tree23c f acc t =
-  match t with
-  | Hole h -> f h acc
-  | Tree tre -> fold_tree_functor f acc tre *)
-
 (* --------------------------------------------------------- *)
 (* Type conversion  *)
 let rec treeh_to_tree t = map_tree_functor (fun x -> treeh_to_tree x) t.data
@@ -79,5 +74,3 @@ let rec treeh_to_tree t = map_tree_functor (fun x -> treeh_to_tree x) t.data
 let rec treeh_to_treec t = Tree (map_tree_functor (fun x ->  treeh_to_treec x) t.data)
 
 let rec tree_to_treec t = Tree (map_tree_functor (fun x ->  tree_to_treec x) t)
-
-(* let get_holes = fold_tree23c (fun t acc -> t::acc) [] *)

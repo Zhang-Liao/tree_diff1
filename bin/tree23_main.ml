@@ -25,7 +25,7 @@ let rec gcp tc1 tc2 = match tc1, tc2 with
   | Tree(Node3 (a, b, c)), Tree(Node3(a', b', c')) -> Tree(Node3 (gcp a a', gcp b b', gcp c c'))
   | _ -> Hole(tc1, tc2)
 
-let change_tree23 s d =
+let change_tree23 (s, d) =
   let decorate_aux = function
     | Leaf a -> Printf.sprintf "(Leaf %s)" a
     | Node2 (a, b) -> Printf.sprintf "(Node2 %s %s)" a.dig b.dig
@@ -41,25 +41,23 @@ let change_tree23 s d =
   let oracle = wcs s_h d_h in
   postproc (extract oracle s_h) (extract oracle d_h)
 
-let tree23c_holes t =  MetaVarSet.of_list (List.map (fun x-> x.dig) (get_holes t))
-
-let get_source t = map_tree23c (fun (s, _) -> s) t
-
-let get_dest t = map_tree23c (fun (_, d) -> d) t
+let get_source t = map_tree23c (fun (s, _) -> s) t 
 
 let closure pat =
+  let tree23c_holes t =  MetaVarSet.of_list (List.map (fun x-> x.dig) (get_holes t)) in
+  let get_dest t = map_tree23c (fun (_, d) -> d) t in
   let rec aux p =
     match p with
     | Hole (s, d) -> tree23c_holes s, tree23c_holes d, Hole (s, d)
-    | Tree(Leaf l) -> MetaVarSet.empty, MetaVarSet.empty, Tree(Leaf l)
-    | Tree(Node2 (a, b)) ->
+    | Tree (Leaf l) -> MetaVarSet.empty, MetaVarSet.empty, Tree(Leaf l)
+    | Tree (Node2 (a, b)) ->
       let s1, d1, a' = aux a in
       let s2, d2, b' = aux b in
       MetaVarSet.union s1 s2,
       MetaVarSet.union d1 d2,
       if MetaVarSet.equal s1 d1 && MetaVarSet.equal s2 d2
-      then Tree(Node2 (a', b'))
-      else Hole ((Tree (Node2 (get_source a', get_source b')),Tree (Node2 (get_dest a', get_dest b'))))
+      then Tree (Node2 (a', b'))
+      else Hole ((Tree (Node2 (get_source a', get_source b')), Tree (Node2 (get_dest a', get_dest b'))))
     | Tree(Node3 (a, b, c)) ->
       let s1, d1, a' = aux a in
       let s2, d2, b' = aux b in
@@ -69,8 +67,7 @@ let closure pat =
       if MetaVarSet.equal s1 d1 && MetaVarSet.equal s2 d2 && MetaVarSet.equal s3 d3
       then Tree(Node3 (a', b', c'))
       else Hole ((Tree (Node3 (get_source a', get_source b', get_source c')),Tree (Node3 (get_dest a', get_dest b', get_dest c'))))
-  in
-  let _,_, pat' = aux pat in pat'
+  in let _,_, pat' = aux pat in pat'
 
 let subst_ident patc =
   let reorder pat =
@@ -87,15 +84,13 @@ let subst_ident patc =
       | (Hole a, Hole b) when a.dig = b.dig -> treeh_to_treec a
       | h -> Hole h) patc
 
-let diff_tree23 (s, d) = (Batteries.uncurry gcp)@@change_tree23 s d
-
 let _ =
   let aux ((t1, t2) as t) =
     let _ =
       print_endline "Tree1"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t1;
       print_endline "Tree2"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t2
     in
-    let patch = diff_tree23 t in
+    let patch = (Batteries.uncurry gcp)@@change_tree23 t in
     let patch, map = subst_ident@@closure patch in
     if !context then
       let _ =
