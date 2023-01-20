@@ -15,8 +15,7 @@ type 'a tree23c =
     Tree of 'a tree23c tree23_functor
   | Hole of 'a
 
-let rec sexp_of_tree23c sexp_of_a t =
-  match t with
+let rec sexp_of_tree23c sexp_of_a = function 
   | Hole h -> List[Atom "Hole"; sexp_of_a h]
   | Tree (Leaf l) -> List[Atom "Leaf"; Atom l]
   | Tree(Node2 (a , b)) -> List [Atom "Node2"; sexp_of_tree23c sexp_of_a a ; sexp_of_tree23c sexp_of_a b]
@@ -37,40 +36,36 @@ let load_tree23s f =
 
 (* --------------------------------------------------------- *)
 (* Map and Fold *)
-let get_holes t =
-  let rec aux acc = function
-    | Hole h -> h::acc
-    | Tree (Leaf _) -> acc
-    | Tree (Node2 (a, b)) ->
-      let acc1 = aux acc a in
-      aux acc1 b
-    | Tree (Node3 (a, b, c)) ->
-      let acc1 = aux acc a in
-      let acc2 = aux acc1 b in
-      aux acc2 c
-  in aux [] t
-
-let map_tree_functor f t =
-  match t with
+let map_tree_functor f = function
   | Leaf l -> Leaf l
   | Node2 (a, b) -> Node2 (f a, f b)
   | Node3 (a, b, c) -> Node3 (f a, f b, f c)
 
-let fold_tree_functor f acc t =
-  match t with
+let fold_tree_functor f acc t = function
   | Leaf l -> acc
   | Node2 (a, b) -> f (f acc a) b
   | Node3 (a, b, c) -> f (f (f acc a) b) c
 
-let rec map_tree23c f t =
-  match t with
+let rec map_tree23c f = function
   | Hole h -> f h
   | Tree tre -> Tree (map_tree_functor (map_tree23c f) tre)
 
+let fold_tree23c f t acc =
+  let rec aux t acc = match t with
+    | Hole h -> f h acc
+    | Tree (Leaf _) -> acc
+    | Tree (Node2 (a, b)) ->
+      aux b (aux acc a)
+    | Tree (Node3 (a, b, c)) ->
+      aux c (aux b (aux acc a )) in
+  aux t acc
+
 (* --------------------------------------------------------- *)
-(* Type conversion  *)
+(* Helper  *)
 let rec treeh_to_tree t = map_tree_functor (fun x -> treeh_to_tree x) t.data
 
 let rec treeh_to_treec t = Tree (map_tree_functor (fun x ->  treeh_to_treec x) t.data)
 
 let rec tree_to_treec t = Tree (map_tree_functor (fun x ->  tree_to_treec x) t)
+
+let get_holes t = fold_tree23c (fun h acc -> h::acc) t []
