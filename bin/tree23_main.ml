@@ -43,7 +43,7 @@ let change_tree23 (s, d) =
 let get_source t = map_tree23c (fun (s, _) -> s) t
 
 let closure pat =
-  let tree23c_holes t =  MetaVarSet.of_list (List.map (fun x-> x.dig) (get_holes t)) in
+  let tree23c_holes t = MetaVarSet.of_list (List.map (fun x-> x.dig) (get_holes t)) in
   let get_dest t = map_tree23c (fun (_, d) -> d) t in
   let rec aux = function
     | Hole (s, d) -> tree23c_holes s, tree23c_holes d, Hole (s, d)
@@ -84,12 +84,9 @@ let subst_ident patc =
 
 let _ =
   let aux ((t1, t2) as t) =
-    let _ =
-      print_endline "Tree1"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t1;
-      print_endline "Tree2"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t2
-    in
-    let patch = (Batteries.uncurry gcp)@@change_tree23 t in
-    let patch, map = subst_ident@@closure patch in
+    print_endline "Tree1"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t1;
+    print_endline "Tree2"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t2;
+    let patch, map = subst_ident@@closure@@(Batteries.uncurry gcp)@@change_tree23 t in
     if !context then
       (print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch;
       IntMap.iter (fun i t ->
