@@ -15,20 +15,13 @@ let () = Arg.parse
 module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
 
-let rec extract o t =
-  match o t with
-  | Some _ -> Hole t
-  | None -> (
-      match t.data with
-      | Leaf a -> Tree (Leaf a)
-      | Node2 (a, b) -> Tree(Node2 (extract o a, extract o b))
-      | Node3 (a, b, c) -> Tree(Node3 (extract o a, extract o b, extract o c)))
+let rec extract oracle t =
+  match oracle t with
+  | Some  _ -> Hole t
+  | None -> Tree (map_tree_functor (extract oracle) t.data)
 
-(* evaluate twice ?? *)
 let vars_of t =
   List.fold_left (fun acc th -> MetaVarSet.add th.dig acc)  MetaVarSet.empty (get_holes t)
-
-let inter_vars t1 t2 =  MetaVarSet.inter (vars_of t1) (vars_of t2)
 
 let postproc tc1 tc2 =
   let vars_inter = MetaVarSet.inter (vars_of tc1) (vars_of tc2) in
@@ -38,7 +31,6 @@ let postproc tc1 tc2 =
     else treeh_to_treec hl
   in
   map_tree23c keep_or_drop tc1, map_tree23c keep_or_drop tc2
-
 
 let rec gcp tc1 tc2 =
   match tc1, tc2 with
@@ -64,23 +56,12 @@ let rec decorate t =
     let s = Printf.sprintf "(Node3 %s %s %s)" a_h.dig b_h.dig c_h.dig in
     {data = Node3 (a_h, b_h, c_h); dig = Digest.string s}
 
-let subtrees t =
-  let rec aux acc t =
-    let acc1 = MetaVarSet.add t.dig acc in
-    match t.data with
-    | Leaf _ -> acc1
-    | Node2 (a, b) ->
-      let acc2 = aux acc1 a in
-      aux acc2 b
-    | Node3 (a, b, c) ->
-      let acc2 = aux acc1 a in
-      let acc3 = aux acc2 b in
-      aux acc3 c in
-  aux MetaVarSet.empty t
+let rec subtrees t acc = fold_tree_functor (
+  fun acc curr_t -> subtrees curr_t acc) (MetaVarSet.add t.dig acc) t.data
 
 let wcs s d =
-  let trees1 = subtrees s in
-  let trees2 = subtrees d in
+  let trees1 = subtrees s MetaVarSet.empty in
+  let trees2 = subtrees d MetaVarSet.empty in
   let inters = MetaVarSet.inter trees1 trees2 in
   fun t ->
     let h =  t.dig in
@@ -160,7 +141,7 @@ let _ =
       let _ =
       print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch in
       IntMap.iter (fun i t ->
-          Printf.printf "Hole %i\n" i;
+          print_endline@@Printf.sprintf "Hole %i" i; 
           print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t
         ) map
     else
