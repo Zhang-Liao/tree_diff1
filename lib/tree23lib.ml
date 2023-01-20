@@ -15,7 +15,7 @@ type 'a tree23c =
     Tree of 'a tree23c tree23_functor
   | Hole of 'a
 
-let rec sexp_of_tree23c sexp_of_a = function 
+let rec sexp_of_tree23c sexp_of_a = function
   | Hole h -> List[Atom "Hole"; sexp_of_a h]
   | Tree (Leaf l) -> List[Atom "Leaf"; Atom l]
   | Tree(Node2 (a , b)) -> List [Atom "Node2"; sexp_of_tree23c sexp_of_a a ; sexp_of_tree23c sexp_of_a b]
@@ -29,8 +29,7 @@ type patch23 = (metavar change23) tree23c [@@deriving sexp_of]
 let load_tree23s f =
   let sexps = load_sexps f in
   Stdlib.fst@@List.fold_left (fun (acc, curr_exp) sexp ->
-      if curr_exp == None
-      then (acc, Some (tree23_of_sexp sexp))
+      if curr_exp == None then (acc, Some (tree23_of_sexp sexp))
       else (Option.get curr_exp, tree23_of_sexp sexp)::acc, None
     ) ([], None) sexps
 
@@ -41,7 +40,7 @@ let map_tree_functor f = function
   | Node2 (a, b) -> Node2 (f a, f b)
   | Node3 (a, b, c) -> Node3 (f a, f b, f c)
 
-let fold_tree_functor f acc t = function
+let fold_tree_functor f acc = function
   | Leaf l -> acc
   | Node2 (a, b) -> f (f acc a) b
   | Node3 (a, b, c) -> f (f (f acc a) b) c
@@ -55,9 +54,9 @@ let fold_tree23c f t acc =
     | Hole h -> f h acc
     | Tree (Leaf _) -> acc
     | Tree (Node2 (a, b)) ->
-      aux b (aux acc a)
+      aux b (aux a acc)
     | Tree (Node3 (a, b, c)) ->
-      aux c (aux b (aux acc a )) in
+      aux c (aux b (aux a acc)) in
   aux t acc
 
 (* --------------------------------------------------------- *)
