@@ -77,26 +77,23 @@ let closure pat =
   in
   let _,_, pat' = aux pat in pat'
 
-let reorder pat =
-  let var_terms, _ = List.fold_left (fun (acc, i) th ->
-      if StrMap.exists (fun key _ -> String.equal key th.dig) acc then acc, i
-      else StrMap.add th.dig (treeh_to_tree th, i) acc, i+1)
-      (StrMap.empty, 0) (get_holes@@get_source pat) in
-  let reorder_vars t = map_tree23c (fun th ->
-    let _, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) t in
-  let reordered_patc = map_tree23c (fun (a, b) -> Hole (reorder_vars a, reorder_vars b)) pat in
-  let reordered_vars = StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in
-  reordered_patc, reordered_vars
-
 let subst_ident patc =
-  let no_ident_p = map_tree23c (function
-  | (Hole a, Hole b) when a.dig = b.dig -> treeh_to_treec a
-  | h -> Hole h) patc in
-  reorder no_ident_p
+  let reorder pat =
+    let var_terms, _ = List.fold_left (fun (acc, i) th ->
+        if StrMap.exists (fun key _ -> String.equal key th.dig) acc then acc, i
+        else StrMap.add th.dig (treeh_to_tree th, i) acc, i+1)
+        (StrMap.empty, 0) (get_holes@@get_source pat) in
+    let reorder_vars t = map_tree23c (fun th ->
+        let _, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) t in
+    let reordered_patc = map_tree23c (fun (a, b) -> Hole (reorder_vars a, reorder_vars b)) pat in
+    let reordered_vars = StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in
+    reordered_patc, reordered_vars in
+  reorder@@map_tree23c (function
+      | (Hole a, Hole b) when a.dig = b.dig -> treeh_to_treec a
+      | h -> Hole h) patc
 
 let diff_tree23 (s, d) =
-  let t0, t1 = change_tree23 s d in
-  gcp t0 t1
+  let t0, t1 = change_tree23 s d in gcp t0 t1
 
 let _ =
   let aux ((t1, t2) as t) =
@@ -108,7 +105,7 @@ let _ =
     let patch, map = subst_ident@@closure patch in
     if !context then
       let _ =
-      print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch in
+        print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch in
       IntMap.iter (fun i t ->
           print_endline@@Printf.sprintf "Hole %i" i;
           print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t
