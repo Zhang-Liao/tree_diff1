@@ -15,21 +15,13 @@ let () = Arg.parse
 module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
 
-let rec extract oracle t =
-  match oracle t with
-  | Some  _ -> Hole t
-  | None -> Tree (map_tree_functor (extract oracle) t.data)
+let rec extract oracle t = if oracle t then Hole t else Tree (map_tree_functor (extract oracle) t.data)
 
-let vars_of t =
-  List.fold_left (fun acc th -> MetaVarSet.add th.dig acc)  MetaVarSet.empty (get_holes t)
+let vars_of t = List.fold_left (fun acc th -> MetaVarSet.add th.dig acc)  MetaVarSet.empty (get_holes t)
 
 let postproc tc1 tc2 =
   let vars_inter = MetaVarSet.inter (vars_of tc1) (vars_of tc2) in
-  let keep_or_drop hl =
-    if MetaVarSet.mem hl.dig vars_inter
-    then Hole hl
-    else treeh_to_treec hl
-  in
+  let keep_or_drop hl = if MetaVarSet.mem hl.dig vars_inter then Hole hl else treeh_to_treec hl in
   map_tree23c keep_or_drop tc1, map_tree23c keep_or_drop tc2
 
 let rec gcp tc1 tc2 =
@@ -39,33 +31,21 @@ let rec gcp tc1 tc2 =
   | Tree(Node3 (a, b, c)), Tree(Node3(a', b', c')) -> Tree(Node3 (gcp a a', gcp b b', gcp c c'))
   | _ -> Hole(tc1, tc2)
 
-let rec decorate t =
-  match t with
-  | Leaf a ->
-    let s = Printf.sprintf "(Leaf %s)" a in
-    {data = Leaf a; dig = Digest.string s}
-  | Node2 (a, b)->
-    let a_h = decorate a in
-    let b_h = decorate b in
-    let s = Printf.sprintf "(Node2 %s %s)" a_h.dig b_h.dig in
-    {data = Node2 (a_h, b_h); dig = Digest.string s}
-  | Node3 (a, b, c) ->
-    let a_h = decorate a in
-    let b_h = decorate b in
-    let c_h = decorate c in
-    let s = Printf.sprintf "(Node3 %s %s %s)" a_h.dig b_h.dig c_h.dig in
-    {data = Node3 (a_h, b_h, c_h); dig = Digest.string s}
+let decorate_aux = function
+| Leaf a -> Printf.sprintf "(Leaf %s)" a
+| Node2 (a, b) -> Printf.sprintf "(Node2 %s %s)" a.dig b.dig
+| Node3(a, b, c) -> Printf.sprintf "(Node3 %s %s %s)" a.dig b.dig c.dig
 
-let rec subtrees t acc = fold_tree_functor (
-  fun acc curr_t -> subtrees curr_t acc) (MetaVarSet.add t.dig acc) t.data
+let rec decorate t =
+  let decorate_t = map_tree_functor (fun x -> decorate x) t in {data = decorate_t; dig = decorate_aux decorate_t}
+
+let rec subtrees t acc = fold_tree_functor (fun acc curr_t -> subtrees curr_t acc) (MetaVarSet.add t.dig acc) t.data
 
 let wcs s d =
   let trees1 = subtrees s MetaVarSet.empty in
   let trees2 = subtrees d MetaVarSet.empty in
   let inters = MetaVarSet.inter trees1 trees2 in
-  fun t ->
-    let h =  t.dig in
-    MetaVarSet.find_opt h inters
+  fun t -> MetaVarSet.mem t.dig inters
 
 let change_tree23 s d =
   let s_h = decorate s in
@@ -141,7 +121,7 @@ let _ =
       let _ =
       print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch in
       IntMap.iter (fun i t ->
-          print_endline@@Printf.sprintf "Hole %i" i; 
+          print_endline@@Printf.sprintf "Hole %i" i;
           print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t
         ) map
     else
