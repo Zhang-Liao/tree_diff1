@@ -3,14 +3,10 @@ open Tree_diff_lib.Tree23lib
 
 let context = ref false
 let file = ref "data/tree23.dat"
-let args =
-  [
-    ("-context", Arg.Unit (fun () -> context := true), "Contain the context or not.");
-    ("-file", Arg.Set_string file, "The file of input data.")
-  ]
+let args = [("-context", Arg.Unit (fun () -> context := true), "Contain the context or not.");
+            ("-file", Arg.Set_string file, "The file of input data.")]
 let usage = "Tree23."
-let () = Arg.parse
-    args (fun x -> raise (Arg.Bad ("Bad argument : " ^ x))) usage
+let () = Arg.parse args (fun x -> raise (Arg.Bad ("Bad argument : " ^ x))) usage
 
 module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
@@ -23,8 +19,7 @@ let postproc tc1 tc2 =
   let keep_or_drop hl = if MetaVarSet.mem hl.dig vars_inter then Hole hl else treeh_to_treec hl in
   map_tree23c keep_or_drop tc1, map_tree23c keep_or_drop tc2
 
-let rec gcp tc1 tc2 =
-  match tc1, tc2 with
+let rec gcp tc1 tc2 = match tc1, tc2 with
   | Tree(Leaf t), Tree(Leaf t') when t = t' -> Tree (Leaf t)
   | Tree(Node2 (a, b)), Tree(Node2(a', b')) -> Tree(Node2 (gcp a a', gcp b b'))
   | Tree(Node3 (a, b, c)), Tree(Node3(a', b', c')) -> Tree(Node3 (gcp a a', gcp b b', gcp c c'))
@@ -92,8 +87,7 @@ let subst_ident patc =
       | (Hole a, Hole b) when a.dig = b.dig -> treeh_to_treec a
       | h -> Hole h) patc
 
-let diff_tree23 (s, d) =
-  let t0, t1 = change_tree23 s d in gcp t0 t1
+let diff_tree23 (s, d) = (Batteries.uncurry gcp)@@change_tree23 s d
 
 let _ =
   let aux ((t1, t2) as t) =
