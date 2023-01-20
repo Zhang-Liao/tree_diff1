@@ -17,9 +17,8 @@ module IntMap = Map.Make(Int)
 
 let rec extract oracle t = if oracle t then Hole t else Tree (map_tree_functor (extract oracle) t.data)
 
-let vars_of t = List.fold_left (fun acc th -> MetaVarSet.add th.dig acc)  MetaVarSet.empty (get_holes t)
-
 let postproc tc1 tc2 =
+  let vars_of t = List.fold_left (fun acc th -> MetaVarSet.add th.dig acc) MetaVarSet.empty (get_holes t) in
   let vars_inter = MetaVarSet.inter (vars_of tc1) (vars_of tc2) in
   let keep_or_drop hl = if MetaVarSet.mem hl.dig vars_inter then Hole hl else treeh_to_treec hl in
   map_tree23c keep_or_drop tc1, map_tree23c keep_or_drop tc2
@@ -31,23 +30,17 @@ let rec gcp tc1 tc2 =
   | Tree(Node3 (a, b, c)), Tree(Node3(a', b', c')) -> Tree(Node3 (gcp a a', gcp b b', gcp c c'))
   | _ -> Hole(tc1, tc2)
 
-let decorate_aux = function
-| Leaf a -> Printf.sprintf "(Leaf %s)" a
-| Node2 (a, b) -> Printf.sprintf "(Node2 %s %s)" a.dig b.dig
-| Node3(a, b, c) -> Printf.sprintf "(Node3 %s %s %s)" a.dig b.dig c.dig
-
-let rec decorate t =
-  let decorate_t = map_tree_functor (fun x -> decorate x) t in {data = decorate_t; dig = decorate_aux decorate_t}
-
-let rec subtrees t acc = fold_tree_functor (fun acc curr_t -> subtrees curr_t acc) (MetaVarSet.add t.dig acc) t.data
-
-let wcs s d =
-  let trees1 = subtrees s MetaVarSet.empty in
-  let trees2 = subtrees d MetaVarSet.empty in
-  let inters = MetaVarSet.inter trees1 trees2 in
-  fun t -> MetaVarSet.mem t.dig inters
-
 let change_tree23 s d =
+  let decorate_aux = function
+    | Leaf a -> Printf.sprintf "(Leaf %s)" a
+    | Node2 (a, b) -> Printf.sprintf "(Node2 %s %s)" a.dig b.dig
+    | Node3(a, b, c) -> Printf.sprintf "(Node3 %s %s %s)" a.dig b.dig c.dig in
+  let rec decorate t =
+    let decorate_t = map_tree_functor (fun x -> decorate x) t in {data = decorate_t; dig = decorate_aux decorate_t} in
+  let rec subtrees t acc = fold_tree_functor (fun acc curr_t -> subtrees curr_t acc) (MetaVarSet.add t.dig acc) t.data in
+  let wcs s d =
+    let inters = MetaVarSet.inter (subtrees s MetaVarSet.empty) (subtrees d MetaVarSet.empty) in
+    fun t -> MetaVarSet.mem t.dig inters in
   let s_h = decorate s in
   let d_h = decorate d in
   let oracle = wcs s_h d_h in
@@ -86,17 +79,13 @@ let closure pat =
 
 let reorder pat =
   let var_terms, _ = List.fold_left (fun (acc, i) th ->
-      if StrMap.exists (fun key _ -> String.equal key th.dig) acc then
-        acc, i
-      else
-        StrMap.add th.dig (treeh_to_tree th, i) acc, i+1)
-      (StrMap.empty, 0) (get_holes@@get_source pat)
-      in
+      if StrMap.exists (fun key _ -> String.equal key th.dig) acc then acc, i
+      else StrMap.add th.dig (treeh_to_tree th, i) acc, i+1)
+      (StrMap.empty, 0) (get_holes@@get_source pat) in
   let reorder_vars t = map_tree23c (fun th ->
     let _, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) t in
   let reordered_patc = map_tree23c (fun (a, b) -> Hole (reorder_vars a, reorder_vars b)) pat in
-  let reordered_vars =
-    StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in
+  let reordered_vars = StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in
   reordered_patc, reordered_vars
 
 let subst_ident patc =
