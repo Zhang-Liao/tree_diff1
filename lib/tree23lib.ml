@@ -11,12 +11,10 @@ type tree23 = tree23 tree23_functor [@@deriving sexp]
 type metavar = string [@@deriving sexp]
 type tree23h = {data: tree23h tree23_functor; dig :string}
 
-type 'a tree23c =
-    Tree of 'a tree23c tree23_functor
-  | Hole of 'a
+type 'a tree23c = Tree of 'a tree23c tree23_functor | Hole of 'a
 
 let rec sexp_of_tree23c sexp_of_a = function
-  | Hole h -> List[Atom "Hole"; sexp_of_a h]
+    Hole h -> List[Atom "Hole"; sexp_of_a h]
   | Tree (Leaf l) -> List[Atom "Leaf"; Atom l]
   | Tree(Node2 (a , b)) -> List [Atom "Node2"; sexp_of_tree23c sexp_of_a a ; sexp_of_tree23c sexp_of_a b]
   | Tree(Node3 (a, b, c)) -> List [Atom "Node3"; sexp_of_tree23c sexp_of_a a ; sexp_of_tree23c sexp_of_a b; sexp_of_tree23c sexp_of_a c]
