@@ -5,8 +5,7 @@ let context = ref false
 let file = ref "data/tree23.dat"
 let args = [("-context", Arg.Unit (fun () -> context := true), "Contain the context or not.");
             ("-file", Arg.Set_string file, "The file of input data.")]
-let usage = "Tree23."
-let () = Arg.parse args (fun x -> raise (Arg.Bad ("Bad argument : " ^ x))) usage
+let () = Arg.parse args (fun x -> raise (Arg.Bad ("Bad argument : " ^ x))) "Tree23."
 
 module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
@@ -87,8 +86,8 @@ let _ =
     print_endline "Tree1"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t1;
     print_endline "Tree2"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t2;
     let patch, map = subst_ident@@closure@@(Batteries.uncurry gcp)@@change_tree23 t in
-    if !context then
-      (print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch;
+    if !context then (
+      print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch;
       IntMap.iter (fun i t ->
           print_endline@@Printf.sprintf "Hole %i" i;
           print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t) map)
