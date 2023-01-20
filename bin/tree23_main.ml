@@ -11,8 +11,6 @@ let () = Arg.parse args (fun x -> raise (Arg.Bad ("Bad argument : " ^ x))) usage
 module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
 
-let rec extract oracle t = if oracle t then Hole t else Tree (map_tree_functor (extract oracle) t.data)
-
 let postproc tc1 tc2 =
   let vars_of t = List.fold_left (fun acc th -> MetaVarSet.add th.dig acc) MetaVarSet.empty (get_holes t) in
   let vars_inter = MetaVarSet.inter (vars_of tc1) (vars_of tc2) in
@@ -26,6 +24,7 @@ let rec gcp tc1 tc2 = match tc1, tc2 with
   | _ -> Hole(tc1, tc2)
 
 let change_tree23 (s, d) =
+  let rec extract oracle t = if oracle t then Hole t else Tree (map_tree_functor (extract oracle) t.data) in
   let decorate_aux = function
     | Leaf a -> Printf.sprintf "(Leaf %s)" a
     | Node2 (a, b) -> Printf.sprintf "(Node2 %s %s)" a.dig b.dig
@@ -41,13 +40,12 @@ let change_tree23 (s, d) =
   let oracle = wcs s_h d_h in
   postproc (extract oracle s_h) (extract oracle d_h)
 
-let get_source t = map_tree23c (fun (s, _) -> s) t 
+let get_source t = map_tree23c (fun (s, _) -> s) t
 
 let closure pat =
   let tree23c_holes t =  MetaVarSet.of_list (List.map (fun x-> x.dig) (get_holes t)) in
   let get_dest t = map_tree23c (fun (_, d) -> d) t in
-  let rec aux p =
-    match p with
+  let rec aux = function
     | Hole (s, d) -> tree23c_holes s, tree23c_holes d, Hole (s, d)
     | Tree (Leaf l) -> MetaVarSet.empty, MetaVarSet.empty, Tree(Leaf l)
     | Tree (Node2 (a, b)) ->
@@ -93,16 +91,11 @@ let _ =
     let patch = (Batteries.uncurry gcp)@@change_tree23 t in
     let patch, map = subst_ident@@closure patch in
     if !context then
-      let _ =
-        print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch in
+      (print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch;
       IntMap.iter (fun i t ->
           print_endline@@Printf.sprintf "Hole %i" i;
-          print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t
-        ) map
+          print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t) map)
     else
-      let changes = get_holes patch in
       List.iter (fun c ->
-          let cs = sexp_of_change23 sexp_of_metavar c in
-          print_endline "Change"; print_endline@@Sexp.to_string_hum cs) changes in
-  let sexps = load_tree23s !file in
-  List.iter (fun x -> aux x; print_newline ()) sexps
+          print_endline "Change"; print_endline@@Sexp.to_string_hum@@sexp_of_change23 sexp_of_metavar c) (get_holes patch) in
+  List.iter (fun x -> aux x; print_newline ()) (load_tree23s !file)
