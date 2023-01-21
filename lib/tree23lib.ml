@@ -47,13 +47,9 @@ let rec map_tree23c f = function
   | Hole h -> f h
   | Tree tre -> Tree (map_tree_functor (map_tree23c f) tre)
 
-let rec fold_tree23c f t acc = match t with
-  | Hole h -> f h acc
-  | Tree (Leaf _) -> acc
-  | Tree (Node2 (a, b)) ->
-    fold_tree23c f b (fold_tree23c f a acc)
-  | Tree (Node3 (a, b, c)) ->
-    fold_tree23c f c (fold_tree23c f b (fold_tree23c f a acc))
+let rec fold_tree23c f acc = function
+  | Hole h -> f acc h
+  | Tree tre -> fold_tree_functor (fold_tree23c f) acc tre
 
 (* --------------------------------------------------------- *)
 (* Helper  *)
@@ -63,4 +59,4 @@ let rec treeh_to_treec t = Tree (map_tree_functor (fun x ->  treeh_to_treec x) t
 
 let rec tree_to_treec t = Tree (map_tree_functor (fun x ->  tree_to_treec x) t)
 
-let get_holes t = fold_tree23c (fun h acc -> h::acc) t []
+let get_holes t = fold_tree23c (fun acc h -> h::acc) [] t
