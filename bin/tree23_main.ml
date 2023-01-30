@@ -41,7 +41,7 @@ let get_source t = map_tree23c (fun (s, _) -> s) t
 let closure pat =
   let tree23c_holes t = MetaVarSet.of_list (List.map (fun x-> x.dig) (get_holes t)) in
   let comb (s1, d1, eq) ((s2, d2), _) =
-    MetaVarSet.inter s1 s2, MetaVarSet.inter d1 d2, eq && MetaVarSet.equal s1 d1 && MetaVarSet.equal s2 d2 in
+    MetaVarSet.union s1 s2, MetaVarSet.union d1 d2, eq && MetaVarSet.equal s2 d2 in
   let rec aux = function
     | Hole (s, d) -> (tree23c_holes s, tree23c_holes d), Hole (s, d)
     | Tree t ->
