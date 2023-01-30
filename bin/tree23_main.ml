@@ -40,26 +40,16 @@ let get_source t = map_tree23c (fun (s, _) -> s) t
 
 let closure pat =
   let tree23c_holes t = MetaVarSet.of_list (List.map (fun x-> x.dig) (get_holes t)) in
-  let get_dest t = map_tree23c (fun (_, d) -> d) t in
+  let comb (s1, d1, eq) ((s2, d2), _) =
+    MetaVarSet.inter s1 s2, MetaVarSet.inter d1 d2, eq && MetaVarSet.equal s1 d1 && MetaVarSet.equal s2 d2 in
   let rec aux = function
-    | Hole (s, d) -> tree23c_holes s, tree23c_holes d, Hole (s, d)
-    | Tree (Leaf l) -> MetaVarSet.empty, MetaVarSet.empty, Tree(Leaf l)
-    | Tree (Node2 (a, b)) ->
-      let s1, d1, a' = aux a in
-      let s2, d2, b' = aux b in
-      MetaVarSet.union s1 s2, MetaVarSet.union d1 d2,
-      if MetaVarSet.equal s1 d1 && MetaVarSet.equal s2 d2
-      then Tree (Node2 (a', b'))
-      else Hole ((Tree (Node2 (get_source a', get_source b')), Tree (Node2 (get_dest a', get_dest b'))))
-    | Tree(Node3 (a, b, c)) ->
-      let s1, d1, a' = aux a in
-      let s2, d2, b' = aux b in
-      let s3, d3, c' = aux c in
-      MetaVarSet.union (MetaVarSet.union s1 s2) s3, MetaVarSet.union (MetaVarSet.union d1 d2) d3,
-      if MetaVarSet.equal s1 d1 && MetaVarSet.equal s2 d2 && MetaVarSet.equal s3 d3
-      then Tree(Node3 (a', b', c'))
-      else Hole ((Tree (Node3 (get_source a', get_source b', get_source c')),Tree (Node3 (get_dest a', get_dest b', get_dest c'))))
-  in let _,_, pat' = aux pat in pat'
+    | Hole (s, d) -> (tree23c_holes s, tree23c_holes d), Hole (s, d)
+    | Tree t ->
+      let t = map_tree_functor aux t in
+      let s, d, eq = fold_tree_functor comb (MetaVarSet.empty, MetaVarSet.empty, true) t in
+      let t = Tree (map_tree_functor snd t) in
+      (s, d), if eq then t else Hole (map_tree23c fst t, map_tree23c snd t)
+  in snd@@aux pat
 
 let subst_ident patc =
   let pat = map_tree23c (function
