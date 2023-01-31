@@ -65,3 +65,18 @@ let%expect_test _ =
    (Node2 (Hole ((Leaf w) (Leaf w'))) (Leaf x)))
   Hole 0
   (Node2 (Leaf v) (Leaf u)) |}];
+  (* test inter vs union in closure  *)
+  diff "(Node2 (Node2 (Leaf a) (Leaf b)) (Leaf c))" "(Node2 (Node2 (Leaf b) (Leaf c)) (Leaf c))" true;
+  [%expect{|
+  Tree1
+  (Node2 (Node2 (Leaf a) (Leaf b)) (Leaf c))
+  Tree2
+  (Node2 (Node2 (Leaf b) (Leaf c)) (Leaf c))
+  Patch
+  (Hole
+   ((Node2 (Node2 (Leaf a) (Hole 1)) (Hole 0))
+    (Node2 (Node2 (Hole 1) (Hole 0)) (Hole 0))))
+  Hole 0
+  (Leaf c)
+  Hole 1
+  (Leaf b) |}];
