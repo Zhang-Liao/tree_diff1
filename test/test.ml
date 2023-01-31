@@ -65,7 +65,14 @@ let%expect_test _ =
    (Node2 (Hole ((Leaf w) (Leaf w'))) (Leaf x)))
   Hole 0
   (Node2 (Leaf v) (Leaf u)) |}];
-  (* test inter vs union in closure  *)
+  (** Inter vs union in closure
+  After removing the identicial substitutions, get common subterms by "get_source" from
+  Node2 (
+    Hole (
+      (Node2 (a Hole0))
+      (Node2 (Hole0 Hole1)))
+    c)
+  However, source does not contain Hole1 and causes error in reordering in the future. *)
   diff "(Node2 (Node2 (Leaf a) (Leaf b)) (Leaf c))" "(Node2 (Node2 (Leaf b) (Leaf c)) (Leaf c))" true;
   [%expect{|
   Tree1

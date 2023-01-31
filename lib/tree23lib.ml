@@ -9,7 +9,7 @@ type 'a tree23_functor =
 
 type tree23 = tree23 tree23_functor [@@deriving sexp]
 type metavar = string [@@deriving sexp]
-type tree23h = {data: tree23h tree23_functor; dig :string}
+type tree23h = {data: tree23h tree23_functor; dig :string}[@@deriving sexp]
 
 type 'a tree23c = Tree of 'a tree23c tree23_functor | Hole of 'a
 
