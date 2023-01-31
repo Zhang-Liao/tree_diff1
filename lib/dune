@@ -1,5 +1,5 @@
 (library
  (name tree_diff_lib)
- (libraries sexplib)
+ (libraries sexplib batteries)
  (flags :standard -rectypes -w -27)
- (preprocess (pps ppx_sexp_conv)))
+ (preprocess (pps ppx_sexp_conv ppx_expect)))

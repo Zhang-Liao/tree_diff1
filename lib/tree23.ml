@@ -1,11 +1,5 @@
 open Sexplib
-open Tree_diff_lib.Tree23lib
-
-let context = ref false
-let file = ref "data/tree23.dat"
-let args = [("-context", Arg.Unit (fun () -> context := true), "Contain the context or not.");
-            ("-file", Arg.Set_string file, "The file of input data.")]
-let () = Arg.parse args (fun x -> raise (Arg.Bad ("Bad argument : " ^ x))) "Tree23."
+open Tree23lib
 
 module StrMap = Map.Make(String)
 module IntMap = Map.Make(Int)
@@ -63,13 +57,19 @@ let subst_ident patc =
       let _, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) t in
   map_tree23c (fun (a, b) -> Hole (reorder_vars a, reorder_vars b)) pat, StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty
 
-let _ = List.iter (fun ((t1, t2) as t) ->
-    print_endline "Tree1"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t1; print_endline "Tree2"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t2;
-    let patch, map = subst_ident@@closure@@(Batteries.uncurry gcp)@@change_tree23 t in
-    if !context then (
+let diff t1 t2 context =
+    let t1 = match Sexp.parse t1 with
+      | Done (t, _) -> tree23_of_sexp t
+      | _ -> failwith ("error parse "^ t1) in
+    let t2 = match Sexp.parse t2 with
+      | Done (t, _) -> tree23_of_sexp t
+      | _ -> failwith ("error parse "^ t2) in
+    print_endline "Tree1"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t1;
+    print_endline "Tree2"; print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t2;
+    let patch, map = subst_ident@@closure@@(Batteries.uncurry gcp)@@change_tree23 (t1, t2) in
+    if context then (
       print_endline "Patch"; print_endline@@Sexp.to_string_hum@@sexp_of_patch23 patch;
       IntMap.iter (fun i t -> print_endline@@Printf.sprintf "Hole %i" i;
                     print_endline@@Sexp.to_string_hum@@sexp_of_tree23 t) map)
     else
       List.iter (fun c -> print_endline "Change"; print_endline@@Sexp.to_string_hum@@sexp_of_change23 sexp_of_metavar c) (get_holes patch)
-  ; print_newline ()) (load_tree23s !file)

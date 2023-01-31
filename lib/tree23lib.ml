@@ -23,15 +23,6 @@ type 'a change23 = 'a tree23c * 'a tree23c [@@deriving sexp_of]
 type patch23 = (metavar change23) tree23c [@@deriving sexp_of]
 
 (* --------------------------------------------------------- *)
-(* S-expression *)
-let load_tree23s f =
-  let sexps = load_sexps f in
-  Stdlib.fst@@List.fold_left (fun (acc, curr_exp) sexp ->
-      if curr_exp == None then (acc, Some (tree23_of_sexp sexp))
-      else (Option.get curr_exp, tree23_of_sexp sexp)::acc, None
-    ) ([], None) sexps
-
-(* --------------------------------------------------------- *)
 (* Map and Fold *)
 let map_tree_functor f = function
   | Leaf l -> Leaf l

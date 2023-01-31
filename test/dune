@@ -1,2 +1,6 @@
-(test
- (name tree_diff))
+(library
+ (name test)
+ (inline_tests)
+ (libraries tree_diff_lib)
+ (flags :standard -rectypes -w -27)
+ (preprocess (pps ppx_expect)))
