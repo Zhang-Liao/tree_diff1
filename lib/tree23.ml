@@ -6,7 +6,8 @@ module IntMap = Map.Make(Int)
 
 let postproc tc1 tc2 =
   let vars_of t = List.fold_left (fun acc th -> MetaVarSet.add th.dig acc) MetaVarSet.empty (get_holes t) in
-  let keep_or_drop hl = if MetaVarSet.mem hl.dig (MetaVarSet.inter (vars_of tc1) (vars_of tc2)) then Hole hl else treeh_to_treec hl in
+  let inters = MetaVarSet.inter (vars_of tc1) (vars_of tc2) in
+  let keep_or_drop hl = if MetaVarSet.mem hl.dig inters then Hole hl else treeh_to_treec hl in
   map_tree23c keep_or_drop tc1, map_tree23c keep_or_drop tc2
 
 let rec gcp tc1 tc2 = match tc1, tc2 with
@@ -22,7 +23,7 @@ let change_tree23 (s, d) =
         | Leaf a -> Printf.sprintf "(Leaf %s)" a
         | Node2 (a, b) -> Printf.sprintf "(Node2 %s %s)" a.dig b.dig
         | Node3(a, b, c) -> Printf.sprintf "(Node3 %s %s %s)" a.dig b.dig c.dig} in
-  let rec subtrees t acc = fold_tree_functor (fun acc curr_t -> subtrees curr_t acc) (MetaVarSet.add t.dig acc) t.data in
+  let rec subtrees t acc = fold_tree_functor (fun acc t -> subtrees t acc) (MetaVarSet.add t.dig acc) t.data in
   let s_h = decorate s in
   let d_h = decorate d in
   let oracle =
@@ -55,7 +56,9 @@ let subst_ident patc =
       (StrMap.empty, 0) (get_holes@@get_source pat) in
   let reorder_vars t = map_tree23c (fun th ->
       let _, i = StrMap.find th.dig var_terms in Hole (string_of_int i)) t in
-  map_tree23c (fun (a, b) -> Hole (reorder_vars a, reorder_vars b)) pat, StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty
+  let pat = map_tree23c (fun (a, b) -> Hole (reorder_vars a, reorder_vars b)) pat in
+  let sbst = StrMap.fold (fun _ (t, i) acc -> IntMap.add i t acc) var_terms IntMap.empty in
+  pat, sbst
 
 let diff t1 t2 context =
     let t1 = match Sexp.parse t1 with
